@@ -62,7 +62,7 @@ export default function ChatPage() {
   const [transparentMessages, setTransparentMessages] = useState<boolean>(false);
   const [user, setUser] = useState<any>(null); // Authenticated user
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const supabase = createSupabaseClient();
+  const supabase = getSupabaseClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
