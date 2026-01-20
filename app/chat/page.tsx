@@ -80,22 +80,7 @@ export default function ChatPage() {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
-
-  // Check authentication status
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  }, [supabase.auth]);
 
   // Load commands from localStorage
   useEffect(() => {

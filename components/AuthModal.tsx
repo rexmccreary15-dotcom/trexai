@@ -264,7 +264,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, theme }: AuthMod
                   }}
                   className={`w-full ${themeClasses.button} py-2 rounded-lg text-sm mt-2`}
                 >
-                  I've Verified - Go to Login
+                  I&apos;ve Verified - Go to Login
                 </button>
               </div>
             </div>
@@ -373,7 +373,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, theme }: AuthMod
                   className={`text-sm ${theme === "dark" ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-700"}`}
                 >
                   {mode === "login"
-                    ? "Don't have an account? Sign up"
+                    ? "Don&apos;t have an account? Sign up"
                     : "Already have an account? Log in"}
                 </button>
               </div>
