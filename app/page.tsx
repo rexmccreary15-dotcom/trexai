@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Trash2, MessageSquare } from "lucide-react";
 import { getChats, deleteChat, type Chat } from "@/lib/chatStorage";
+import { getChatsFromDB } from "@/lib/db/chatStorage";
 import { formatDistanceToNow } from "date-fns";
 
 export default function Home() {
