@@ -46,7 +46,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, theme }: AuthMod
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/chat`,
+          emailRedirectTo: `${window.location.origin}/`,
         },
       });
 
