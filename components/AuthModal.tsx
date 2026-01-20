@@ -53,8 +53,9 @@ export default function AuthModal({ isOpen, onClose, onSuccess, theme }: AuthMod
       if (signUpError) throw signUpError;
 
       if (data.user) {
-        setMessage("Verification code sent to your email! Please check your inbox.");
-        setMode("verify");
+        setMessage("Verification email sent! Please check your inbox and click the verification link. After verifying, you can log in.");
+        // Don't switch to verify mode - Supabase sends a link, not a code
+        // User will click the link in their email, then can log in
       }
     } catch (err: any) {
       setError(err.message || "Failed to sign up. Please try again.");
@@ -106,15 +107,19 @@ export default function AuthModal({ isOpen, onClose, onSuccess, theme }: AuthMod
     setMessage("");
 
     try {
-      // Verify the token (code) - Supabase sends a token in the email link
-      // For code-based verification, we need to use the verifyOtp method
+      // Supabase sends a magic link by default, but if you configure it for OTP codes,
+      // this will work. Otherwise, users click the link in their email.
       const { data, error: verifyError } = await supabase.auth.verifyOtp({
         email,
         token: verificationCode,
         type: "email",
       });
 
-      if (verifyError) throw verifyError;
+      if (verifyError) {
+        // If OTP verification fails, it might be because Supabase is using magic links
+        setError("Please click the verification link in your email instead. If you received a code, make sure it's entered correctly.");
+        return;
+      }
 
       if (data.user) {
         setMessage("Email verified! Logging you in...");
@@ -124,7 +129,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, theme }: AuthMod
         }, 1000);
       }
     } catch (err: any) {
-      setError(err.message || "Invalid verification code. Please try again.");
+      setError(err.message || "Invalid verification code. Please check your email for the verification link.");
     } finally {
       setLoading(false);
     }
@@ -213,36 +218,56 @@ export default function AuthModal({ isOpen, onClose, onSuccess, theme }: AuthMod
           )}
 
           {mode === "verify" ? (
-            <form onSubmit={handleVerifyEmail} className="space-y-4">
+            <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">
-                  Verification Code
-                </label>
-                <input
-                  type="text"
-                  value={verificationCode}
-                  onChange={(e) => setVerificationCode(e.target.value)}
-                  placeholder="Enter code from email"
-                  className={`w-full ${themeClasses.input} rounded px-3 py-2 focus:outline-none focus:border-blue-500`}
-                  required
-                />
+                <p className="text-sm mb-4">
+                  Supabase sends a verification link to your email. Please check your inbox and click the link to verify your account.
+                </p>
+                <p className="text-sm mb-4">
+                  If you received a verification code instead, enter it below:
+                </p>
+                <form onSubmit={handleVerifyEmail} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Verification Code (if you received one)
+                    </label>
+                    <input
+                      type="text"
+                      value={verificationCode}
+                      onChange={(e) => setVerificationCode(e.target.value)}
+                      placeholder="Enter code from email"
+                      className={`w-full ${themeClasses.input} rounded px-3 py-2 focus:outline-none focus:border-blue-500`}
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={loading || !verificationCode}
+                    className={`w-full ${themeClasses.buttonPrimary} py-2 rounded-lg disabled:opacity-50`}
+                  >
+                    {loading ? "Verifying..." : "Verify Code"}
+                  </button>
+                </form>
+                <button
+                  type="button"
+                  onClick={handleResendCode}
+                  disabled={loading}
+                  className={`w-full ${themeClasses.button} py-2 rounded-lg text-sm disabled:opacity-50 mt-2`}
+                >
+                  Resend Verification Email
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("login");
+                    setError("");
+                    setMessage("After verifying your email, you can log in here.");
+                  }}
+                  className={`w-full ${themeClasses.button} py-2 rounded-lg text-sm mt-2`}
+                >
+                  I've Verified - Go to Login
+                </button>
               </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className={`w-full ${themeClasses.buttonPrimary} py-2 rounded-lg disabled:opacity-50`}
-              >
-                {loading ? "Verifying..." : "Verify Email"}
-              </button>
-              <button
-                type="button"
-                onClick={handleResendCode}
-                disabled={loading}
-                className={`w-full ${themeClasses.button} py-2 rounded-lg text-sm disabled:opacity-50`}
-              >
-                Resend Code
-              </button>
-            </form>
+            </div>
           ) : (
             <>
               {/* Google Sign In */}

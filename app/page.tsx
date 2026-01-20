@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Trash2, MessageSquare, LogIn, X } from "lucide-react";
 import { getChats, deleteChat, type Chat } from "@/lib/chatStorage";
 import { getChatsFromDB } from "@/lib/db/chatStorage";
@@ -26,6 +26,23 @@ export default function Home() {
     }
   }, []);
 
+  const loadChats = useCallback(async () => {
+    try {
+      // Try to load from database first (pass auth user ID if available)
+      const dbChats = await getChatsFromDB(user?.id);
+      if (dbChats && dbChats.length > 0) {
+        setChats(dbChats);
+      } else {
+        // Fallback to localStorage
+        setChats(getChats());
+      }
+    } catch (error) {
+      console.error('Error loading chats, using localStorage:', error);
+      // Fallback to localStorage
+      setChats(getChats());
+    }
+  }, [user?.id]);
+
   // Check authentication status
   useEffect(() => {
     // Get current user
@@ -45,7 +62,7 @@ export default function Home() {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [supabase.auth, loadChats]);
 
   // Load theme preference
   useEffect(() => {
@@ -55,26 +72,9 @@ export default function Home() {
     }
   }, []);
 
-  const loadChats = async () => {
-    try {
-      // Try to load from database first (pass auth user ID if available)
-      const dbChats = await getChatsFromDB(user?.id);
-      if (dbChats && dbChats.length > 0) {
-        setChats(dbChats);
-      } else {
-        // Fallback to localStorage
-        setChats(getChats());
-      }
-    } catch (error) {
-      console.error('Error loading chats, using localStorage:', error);
-      // Fallback to localStorage
-      setChats(getChats());
-    }
-  };
-
   useEffect(() => {
     loadChats();
-  }, []);
+  }, [loadChats]);
 
   const handleDelete = (chatId: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -234,7 +234,7 @@ export default function Home() {
                 Create an account to save your chat history and access it from any device.
               </p>
               <p className="text-sm text-gray-400">
-                You can skip this and use the site anonymously, but your chats won't be saved.
+                You can skip this and use the site anonymously, but your chats won&apos;t be saved.
               </p>
               <div className="flex gap-3">
                 <button
