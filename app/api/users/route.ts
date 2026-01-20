@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
-    // Recalculate message counts from analytics events for accuracy
+    // Recalculate message counts and fetch emails from auth
     const usersWithCorrectCounts = await Promise.all((users || []).map(async (user) => {
       const { count: actualMessageCount } = await adminClient
         .from('analytics_events')
@@ -40,8 +40,27 @@ export async function GET(request: NextRequest) {
           .eq('id', user.id);
       }
 
+      // If user has auth_user_id but no email, fetch from Supabase Auth
+      let userEmail = user.email;
+      if (user.auth_user_id && !userEmail) {
+        try {
+          const { data: authUser, error: authError } = await adminClient.auth.admin.getUserById(user.auth_user_id);
+          if (!authError && authUser?.user?.email) {
+            userEmail = authUser.user.email;
+            // Update our users table with the email
+            await adminClient
+              .from('users')
+              .update({ email: userEmail })
+              .eq('id', user.id);
+          }
+        } catch (err) {
+          console.error('Error fetching email from auth for user:', user.id, err);
+        }
+      }
+
       return {
         ...user,
+        email: userEmail || user.email || null,
         message_count: realCount, // Always return the actual count
       };
     }));

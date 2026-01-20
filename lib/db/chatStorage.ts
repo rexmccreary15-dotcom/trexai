@@ -20,35 +20,41 @@ export function getSessionId(): string {
 }
 
 // Get or create a user by session ID or authenticated user ID
-export async function getOrCreateUser(sessionId: string, authUserId?: string): Promise<string | null> {
+export async function getOrCreateUser(sessionId: string, authUserId?: string, authUserEmail?: string): Promise<string | null> {
   try {
     const adminClient = createSupabaseAdmin();
     console.log('=== getOrCreateUser START ===');
-    console.log('Looking for user with sessionId:', sessionId, 'authUserId:', authUserId);
+    console.log('Looking for user with sessionId:', sessionId, 'authUserId:', authUserId, 'email:', authUserEmail);
     
     // If user is authenticated, use their auth user ID
     if (authUserId) {
       // Check if user exists in our users table
       const { data: existingUser } = await adminClient
         .from('users')
-        .select('id')
+        .select('id, email')
         .eq('auth_user_id', authUserId)
         .maybeSingle();
 
       if (existingUser) {
         console.log('Found existing authenticated user:', existingUser.id);
+        // Update email if we have it and it's different
+        const updateData: any = { last_active: new Date().toISOString() };
+        if (authUserEmail && existingUser.email !== authUserEmail) {
+          updateData.email = authUserEmail;
+        }
         await adminClient
           .from('users')
-          .update({ last_active: new Date().toISOString() })
+          .update(updateData)
           .eq('id', existingUser.id);
         return existingUser.id;
       }
 
-      // Create new user with auth_user_id
+      // Create new user with auth_user_id and email
       const { data: newUser, error: createError } = await adminClient
         .from('users')
         .insert({
           auth_user_id: authUserId,
+          email: authUserEmail || null,
           session_id: sessionId, // Keep session_id for backward compatibility
           last_active: new Date().toISOString(),
         })

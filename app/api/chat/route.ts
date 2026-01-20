@@ -37,7 +37,8 @@ export async function POST(request: NextRequest) {
       imageMimeType = 'image/png',
       chatId,
       sessionId,
-      authUserId
+      authUserId,
+      authUserEmail
     } = await request.json();
 
     console.log("=== API REQUEST START ===");
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
         console.log("Session ID:", sessionId);
         console.log("Incognito mode:", incognito);
         
-        userId = await getOrCreateUser(sessionId, authUserId);
+        userId = await getOrCreateUser(sessionId, authUserId, authUserEmail);
         console.log("User ID:", userId || "NULL - User creation failed!");
         
         if (!userId) {

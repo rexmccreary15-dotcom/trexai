@@ -437,6 +437,7 @@ export default function ChatPage() {
           chatId: chatId, // Include chatId for saving chats
           sessionId: sessionId, // Include sessionId for analytics tracking
           authUserId: user?.id || null, // Include authenticated user ID if logged in
+          authUserEmail: user?.email || null, // Include authenticated user email if logged in
         }),
       });
 

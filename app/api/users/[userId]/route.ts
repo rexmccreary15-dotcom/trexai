@@ -28,6 +28,25 @@ export async function GET(
       );
     }
 
+    // If user has auth_user_id, get email from Supabase Auth
+    let userEmail = user.email;
+    if (user.auth_user_id && !userEmail) {
+      try {
+        // Get email from Supabase Auth users table
+        const { data: authUser, error: authError } = await adminClient.auth.admin.getUserById(user.auth_user_id);
+        if (!authError && authUser?.user?.email) {
+          userEmail = authUser.user.email;
+          // Update our users table with the email
+          await adminClient
+            .from('users')
+            .update({ email: userEmail })
+            .eq('id', userId);
+        }
+      } catch (err) {
+        console.error('Error fetching email from auth:', err);
+      }
+    }
+
     // Get user's chats
     const { data: chats } = await adminClient
       .from('chats')
@@ -62,6 +81,7 @@ export async function GET(
 
     return NextResponse.json({
       ...user,
+      email: userEmail || user.email || null, // Use email from auth if available
       message_count: realCount, // Always return the actual count
       chats: chats || [],
     });
