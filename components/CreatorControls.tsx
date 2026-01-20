@@ -1,7 +1,7 @@
 "use client";
 
 import { X, BarChart3, Palette, Shield, Settings, Users, Download, Zap, Key, ToggleLeft, FileText } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 interface CreatorControlsProps {
   isOpen: boolean;
@@ -73,7 +73,7 @@ export default function CreatorControls({
     }
   }, [usersPage]);
 
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     setAnalyticsLoading(true);
     try {
       // Add timestamp to prevent browser caching
@@ -103,21 +103,26 @@ export default function CreatorControls({
     } finally {
       setAnalyticsLoading(false);
     }
-  };
+  }, []);
 
-  // Fetch analytics when analytics tab is opened, and auto-refresh every 5 seconds
+  // Fetch analytics when analytics tab is opened, and auto-refresh every 3 seconds
   useEffect(() => {
     if (isOpen && activeTab === "analytics") {
+      // Fetch immediately
       fetchAnalytics();
       
-      // Auto-refresh every 5 seconds when analytics tab is open
+      // Auto-refresh every 3 seconds when analytics tab is open
       const interval = setInterval(() => {
+        console.log("Auto-refreshing analytics...");
         fetchAnalytics();
-      }, 5000);
+      }, 3000); // Reduced to 3 seconds for faster updates
       
-      return () => clearInterval(interval);
+      return () => {
+        console.log("Clearing analytics interval");
+        clearInterval(interval);
+      };
     }
-  }, [isOpen, activeTab]);
+  }, [isOpen, activeTab, fetchAnalytics]);
 
   // Fetch users when users tab is opened
   useEffect(() => {
