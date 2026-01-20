@@ -10,6 +10,7 @@ interface FeedbackPanelProps {
   stopItems: string[];
   onKeepChange: (items: string[]) => void;
   onStopChange: (items: string[]) => void;
+  theme: "dark" | "light";
 }
 
 export default function FeedbackPanel({
@@ -19,11 +20,20 @@ export default function FeedbackPanel({
   stopItems,
   onKeepChange,
   onStopChange,
+  theme,
 }: FeedbackPanelProps) {
   const [newKeepItem, setNewKeepItem] = useState("");
   const [newStopItem, setNewStopItem] = useState("");
 
   if (!isOpen) return null;
+
+  const themeClasses = {
+    bg: theme === "dark" ? "bg-gray-800" : "bg-white",
+    text: theme === "dark" ? "text-white" : "text-gray-900",
+    border: theme === "dark" ? "border-gray-700" : "border-gray-200",
+    input: theme === "dark" ? "bg-gray-700 border-gray-600 text-white" : "bg-gray-100 border-gray-300 text-gray-900",
+    button: theme === "dark" ? "bg-gray-700 hover:bg-gray-600" : "bg-gray-200 hover:bg-gray-300",
+  };
 
   const addKeepItem = () => {
     if (newKeepItem.trim()) {
@@ -49,12 +59,12 @@ export default function FeedbackPanel({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-      <div className="bg-gray-800 rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto m-4">
-        <div className="sticky top-0 bg-gray-800 border-b border-gray-700 p-4 flex items-center justify-between">
+      <div className={`${themeClasses.bg} ${themeClasses.text} rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto m-4`}>
+        <div className={`sticky top-0 ${themeClasses.bg} border-b ${themeClasses.border} p-4 flex items-center justify-between`}>
           <h2 className="text-xl font-semibold">Chat Preferences</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-700 rounded"
+            className={`p-2 ${themeClasses.button} rounded`}
           >
             <X size={20} />
           </button>
@@ -67,7 +77,7 @@ export default function FeedbackPanel({
               <div className="w-3 h-3 bg-green-500 rounded-full"></div>
               <h3 className="font-semibold text-lg">Keep</h3>
             </div>
-            <p className="text-sm text-gray-400">
+            <p className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
               Things you like - the AI will do these more often
             </p>
 
@@ -78,7 +88,7 @@ export default function FeedbackPanel({
                 value={newKeepItem}
                 onChange={(e) => setNewKeepItem(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addKeepItem()}
-                className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 focus:outline-none focus:border-green-500"
+                className={`flex-1 ${themeClasses.input} rounded px-3 py-2 focus:outline-none focus:border-green-500`}
               />
               <button
                 onClick={addKeepItem}
@@ -91,17 +101,17 @@ export default function FeedbackPanel({
 
             <div className="space-y-2">
               {keepItems.length === 0 ? (
-                <p className="text-gray-500 text-sm italic">No items yet</p>
+                <p className={`${theme === "dark" ? "text-gray-500" : "text-gray-600"} text-sm italic`}>No items yet</p>
               ) : (
                 keepItems.map((item, idx) => (
                   <div
                     key={idx}
-                    className="bg-gray-700 rounded-lg p-3 flex items-center justify-between"
+                    className={`${themeClasses.input} rounded-lg p-3 flex items-center justify-between`}
                   >
                     <span>{item}</span>
                     <button
                       onClick={() => removeKeepItem(idx)}
-                      className="p-1 hover:bg-gray-600 rounded"
+                      className={`p-1 ${themeClasses.button} rounded`}
                     >
                       <Trash2 size={14} />
                     </button>
@@ -112,12 +122,12 @@ export default function FeedbackPanel({
           </div>
 
           {/* Stop Section */}
-          <div className="space-y-3 pt-4 border-t border-gray-700">
+          <div className={`space-y-3 pt-4 border-t ${themeClasses.border}`}>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-3 h-3 bg-red-500 rounded-full"></div>
               <h3 className="font-semibold text-lg">Stop</h3>
             </div>
-            <p className="text-sm text-gray-400">
+            <p className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
               Things you don&apos;t like - the AI will avoid these
             </p>
 
@@ -128,7 +138,7 @@ export default function FeedbackPanel({
                 value={newStopItem}
                 onChange={(e) => setNewStopItem(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addStopItem()}
-                className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 focus:outline-none focus:border-red-500"
+                className={`flex-1 ${themeClasses.input} rounded px-3 py-2 focus:outline-none focus:border-red-500`}
               />
               <button
                 onClick={addStopItem}
@@ -141,17 +151,17 @@ export default function FeedbackPanel({
 
             <div className="space-y-2">
               {stopItems.length === 0 ? (
-                <p className="text-gray-500 text-sm italic">No items yet</p>
+                <p className={`${theme === "dark" ? "text-gray-500" : "text-gray-600"} text-sm italic`}>No items yet</p>
               ) : (
                 stopItems.map((item, idx) => (
                   <div
                     key={idx}
-                    className="bg-gray-700 rounded-lg p-3 flex items-center justify-between"
+                    className={`${themeClasses.input} rounded-lg p-3 flex items-center justify-between`}
                   >
                     <span>{item}</span>
                     <button
                       onClick={() => removeStopItem(idx)}
-                      className="p-1 hover:bg-gray-600 rounded"
+                      className={`p-1 ${themeClasses.button} rounded`}
                     >
                       <Trash2 size={14} />
                     </button>

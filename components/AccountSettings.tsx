@@ -9,6 +9,7 @@ interface AccountSettingsProps {
   onApiKeysChange: (keys: ApiKeys) => void;
   onGitHubChange: (connected: boolean, token?: string) => void;
   onCodingModeChange: (enabled: boolean) => void;
+  theme: "dark" | "light";
 }
 
 interface ApiKeys {
@@ -23,6 +24,7 @@ export default function AccountSettings({
   onApiKeysChange,
   onGitHubChange,
   onCodingModeChange,
+  theme,
 }: AccountSettingsProps) {
   const [apiKeys, setApiKeys] = useState<ApiKeys>({
     openai: "",
@@ -114,14 +116,24 @@ export default function AccountSettings({
 
   if (!isOpen) return null;
 
+  if (!isOpen) return null;
+
+  const themeClasses = {
+    bg: theme === "dark" ? "bg-gray-800" : "bg-white",
+    text: theme === "dark" ? "text-white" : "text-gray-900",
+    border: theme === "dark" ? "border-gray-700" : "border-gray-200",
+    input: theme === "dark" ? "bg-gray-700 border-gray-600 text-white" : "bg-gray-100 border-gray-300 text-gray-900",
+    button: theme === "dark" ? "bg-gray-700 hover:bg-gray-600" : "bg-gray-200 hover:bg-gray-300",
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-      <div className="bg-gray-800 rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto m-4">
-        <div className="sticky top-0 bg-gray-800 border-b border-gray-700 p-4 flex items-center justify-between">
+      <div className={`${themeClasses.bg} ${themeClasses.text} rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto m-4`}>
+        <div className={`sticky top-0 ${themeClasses.bg} border-b ${themeClasses.border} p-4 flex items-center justify-between`}>
           <h2 className="text-xl font-semibold">Account Settings</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-700 rounded"
+            className={`p-2 ${themeClasses.button} rounded`}
           >
             <X size={20} />
           </button>
@@ -134,7 +146,7 @@ export default function AccountSettings({
               <Key size={20} />
               API Keys (Optional)
             </h3>
-            <p className="text-sm text-gray-400">
+            <p className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
               Your website can work in <strong>Free Mode</strong> by default (powered by a server-side key configured by the site owner). Add your own API keys here to use premium AI models (ChatGPT, Gemini, Claude).
             </p>
             <div className="bg-blue-900 border border-blue-700 rounded-lg p-3 mb-4">
@@ -155,7 +167,7 @@ export default function AccountSettings({
                       setApiKeys((prev) => ({ ...prev, openai: e.target.value }))
                     }
                     placeholder="sk-..."
-                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 pr-10 focus:outline-none focus:border-blue-500"
+                    className={`w-full ${themeClasses.input} rounded px-3 py-2 pr-10 focus:outline-none focus:border-blue-500`}
                   />
                   <button
                     onClick={() =>
@@ -164,7 +176,7 @@ export default function AccountSettings({
                         openai: !prev.openai,
                       }))
                     }
-                    className="absolute right-2 top-2 p-1 hover:bg-gray-600 rounded"
+                    className={`absolute right-2 top-2 p-1 ${themeClasses.button} rounded`}
                   >
                     {showKeys.openai ? (
                       <EyeOff size={16} />
@@ -183,7 +195,7 @@ export default function AccountSettings({
                   </button>
                 )}
               </div>
-              <p className="text-xs text-gray-500">
+              <p className={`text-xs ${theme === "dark" ? "text-gray-500" : "text-gray-600"}`}>
                 Get your key at:{" "}
                 <a
                   href="https://platform.openai.com/api-keys"
@@ -208,7 +220,7 @@ export default function AccountSettings({
                       setApiKeys((prev) => ({ ...prev, gemini: e.target.value }))
                     }
                     placeholder="AIza..."
-                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 pr-10 focus:outline-none focus:border-blue-500"
+                    className={`w-full ${themeClasses.input} rounded px-3 py-2 pr-10 focus:outline-none focus:border-blue-500`}
                   />
                   <button
                     onClick={() =>
@@ -217,7 +229,7 @@ export default function AccountSettings({
                         gemini: !prev.gemini,
                       }))
                     }
-                    className="absolute right-2 top-2 p-1 hover:bg-gray-600 rounded"
+                    className={`absolute right-2 top-2 p-1 ${themeClasses.button} rounded`}
                   >
                     {showKeys.gemini ? (
                       <EyeOff size={16} />
@@ -236,7 +248,7 @@ export default function AccountSettings({
                   </button>
                 )}
               </div>
-              <p className="text-xs text-gray-500">
+              <p className={`text-xs ${theme === "dark" ? "text-gray-500" : "text-gray-600"}`}>
                 Get your key at:{" "}
                 <a
                   href="https://makersuite.google.com/app/apikey"
@@ -261,7 +273,7 @@ export default function AccountSettings({
                       setApiKeys((prev) => ({ ...prev, claude: e.target.value }))
                     }
                     placeholder="sk-ant-..."
-                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 pr-10 focus:outline-none focus:border-blue-500"
+                    className={`w-full ${themeClasses.input} rounded px-3 py-2 pr-10 focus:outline-none focus:border-blue-500`}
                   />
                   <button
                     onClick={() =>
@@ -270,7 +282,7 @@ export default function AccountSettings({
                         claude: !prev.claude,
                       }))
                     }
-                    className="absolute right-2 top-2 p-1 hover:bg-gray-600 rounded"
+                    className={`absolute right-2 top-2 p-1 ${themeClasses.button} rounded`}
                   >
                     {showKeys.claude ? (
                       <EyeOff size={16} />
@@ -289,7 +301,7 @@ export default function AccountSettings({
                   </button>
                 )}
               </div>
-              <p className="text-xs text-gray-500">
+              <p className={`text-xs ${theme === "dark" ? "text-gray-500" : "text-gray-600"}`}>
                 Get your key at:{" "}
                 <a
                   href="https://console.anthropic.com/"
@@ -304,12 +316,12 @@ export default function AccountSettings({
           </div>
 
           {/* GitHub Section */}
-          <div className="space-y-4 pt-4 border-t border-gray-700">
+          <div className={`space-y-4 pt-4 border-t ${themeClasses.border}`}>
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <Github size={20} />
               GitHub Integration
             </h3>
-            <p className="text-sm text-gray-400">
+            <p className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
               Connect GitHub to enable website building and code generation features.
             </p>
 
@@ -318,7 +330,7 @@ export default function AccountSettings({
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-semibold text-green-300">GitHub Connected</p>
-                    <p className="text-sm text-gray-400">
+                    <p className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
                       Token: {gitHubToken.substring(0, 10)}...
                     </p>
                   </div>
@@ -331,11 +343,11 @@ export default function AccountSettings({
                 </div>
               </div>
             ) : (
-              <div className="bg-gray-700 rounded-lg p-4">
-                <p className="mb-3 text-gray-300">
+              <div className={`${themeClasses.input} rounded-lg p-4`}>
+                <p className={`mb-3 ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}>
                   Connect your GitHub account to enable:
                 </p>
-                <ul className="list-disc list-inside text-sm text-gray-400 mb-4 space-y-1">
+                <ul className={`list-disc list-inside text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"} mb-4 space-y-1`}>
                   <li>Automatic website building</li>
                   <li>Code repository creation</li>
                   <li>File generation and commits</li>
@@ -352,19 +364,19 @@ export default function AccountSettings({
           </div>
 
           {/* Coding Mode */}
-          <div className="space-y-4 pt-4 border-t border-gray-700">
+          <div className={`space-y-4 pt-4 border-t ${themeClasses.border}`}>
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <Code size={20} />
               Coding Mode
             </h3>
-            <p className="text-sm text-gray-400">
+            <p className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
               Enable enhanced coding features and website building capabilities.
             </p>
 
-            <div className="flex items-center justify-between bg-gray-700 rounded-lg p-4">
+            <div className={`flex items-center justify-between ${themeClasses.input} rounded-lg p-4`}>
               <div>
                 <p className="font-semibold">Enable Coding Mode</p>
-                <p className="text-sm text-gray-400">
+                <p className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
                   {codingMode
                     ? "AI will focus on code generation and website building"
                     : "Standard chat mode"}

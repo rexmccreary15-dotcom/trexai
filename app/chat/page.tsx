@@ -113,11 +113,24 @@ export default function ChatPage() {
     setTransparentMessages(savedTransparent);
   }, []);
 
-  // Apply theme to document
+  // Apply theme to document and update background if no custom background is set
   useEffect(() => {
     document.documentElement.classList.remove("dark", "light");
     document.documentElement.classList.add(theme);
     localStorage.setItem("theme", theme);
+    
+    // Update background based on theme if no custom background is set
+    const savedImage = localStorage.getItem("custom-background-image");
+    const savedColor = localStorage.getItem("custom-background-color");
+    
+    if (!savedImage && !savedColor) {
+      // No custom background, use theme-based default
+      if (theme === "light") {
+        setBackground("#ffffff"); // White for light mode
+      } else {
+        setBackground("#0f172a"); // Dark navy for dark mode
+      }
+    }
   }, [theme]);
 
   // Load chat messages when chatId is provided in URL, or create new chat if none
@@ -740,6 +753,7 @@ export default function ChatPage() {
         onClose={() => setShowCommands(false)}
         commands={commands}
         onCommandsChange={setCommands}
+        theme={theme}
       />
       <FeedbackPanel
         isOpen={showFeedback}
@@ -748,6 +762,7 @@ export default function ChatPage() {
         stopItems={stopItems}
         onKeepChange={setKeepItems}
         onStopChange={setStopItems}
+        theme={theme}
       />
       <AccountSettings
         isOpen={showAccountSettings}
