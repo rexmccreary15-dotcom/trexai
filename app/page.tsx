@@ -50,6 +50,8 @@ export default function Home() {
     // Get current user
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
+    }).catch((err) => {
+      console.error('Error getting user:', err);
     });
 
     // Listen for auth changes
@@ -63,7 +65,11 @@ export default function Home() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
   }, [loadChats]);
 
   // Load theme preference

@@ -37,6 +37,11 @@ export default function AuthModal({ isOpen, onClose, onSuccess, theme }: AuthMod
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) {
+      setError("Authentication service not available. Please refresh the page.");
+      return;
+    }
+    
     setLoading(true);
     setError("");
     setMessage("");
@@ -73,6 +78,11 @@ export default function AuthModal({ isOpen, onClose, onSuccess, theme }: AuthMod
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) {
+      setError("Authentication service not available. Please refresh the page.");
+      return;
+    }
+    
     setLoading(true);
     setError("");
     setMessage("");
@@ -109,6 +119,11 @@ export default function AuthModal({ isOpen, onClose, onSuccess, theme }: AuthMod
 
   const handleVerifyEmail = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) {
+      setError("Authentication service not available. Please refresh the page.");
+      return;
+    }
+    
     setLoading(true);
     setError("");
     setMessage("");
@@ -144,6 +159,11 @@ export default function AuthModal({ isOpen, onClose, onSuccess, theme }: AuthMod
 
 
   const handleResendCode = async () => {
+    if (!supabase) {
+      setError("Authentication service not available. Please refresh the page.");
+      return;
+    }
+    
     setLoading(true);
     setError("");
     setMessage("");

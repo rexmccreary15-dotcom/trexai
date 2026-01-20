@@ -73,6 +73,8 @@ export default function ChatPage() {
     
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
+    }).catch((err) => {
+      console.error('Error getting user:', err);
     });
 
     const {
@@ -81,7 +83,11 @@ export default function ChatPage() {
       setUser(session?.user ?? null);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
   }, []);
 
   // Load commands from localStorage
