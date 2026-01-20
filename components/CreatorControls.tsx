@@ -267,7 +267,7 @@ export default function CreatorControls({
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold">Analytics & Usage Stats</h3>
                   <button
-                    onClick={fetchAnalytics}
+                    onClick={() => fetchAnalytics(true)}
                     disabled={analyticsLoading}
                     className={`${themeClasses.button} text-white px-3 py-1 rounded text-sm disabled:opacity-50`}
                   >
