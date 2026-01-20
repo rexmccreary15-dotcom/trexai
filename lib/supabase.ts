@@ -30,13 +30,30 @@ export function createSupabaseAdmin() {
   });
 }
 
-// Client-side Supabase instance
-export const supabase = typeof window !== 'undefined' ? createSupabaseClient() : null;
+// Singleton client instance to avoid multiple instances
+let supabaseClientInstance: ReturnType<typeof createSupabaseClient> | null = null;
+
+// Get or create singleton Supabase client
+export function getSupabaseClient() {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  
+  if (!supabaseClientInstance) {
+    supabaseClientInstance = createSupabaseClient();
+  }
+  
+  return supabaseClientInstance;
+}
+
+// Client-side Supabase instance (use singleton)
+export const supabase = typeof window !== 'undefined' ? getSupabaseClient() : null;
 
 // Helper to get current user (client-side only)
 export async function getCurrentUser() {
   if (typeof window === 'undefined') return null;
-  const client = createSupabaseClient();
+  const client = getSupabaseClient();
+  if (!client) return null;
   const { data: { user } } = await client.auth.getUser();
   return user;
 }

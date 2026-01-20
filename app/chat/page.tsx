@@ -15,7 +15,7 @@ import AccountSettings from "@/components/AccountSettings";
 import CreatorControls from "@/components/CreatorControls";
 import { saveChat, getChatMessages } from "@/lib/chatStorage";
 import { getSessionId, getChatsFromDB, getChatMessagesFromDB, saveChatToDB } from "@/lib/db/chatStorage";
-import { createSupabaseClient } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 interface Command {
   id: string;
@@ -69,6 +69,8 @@ export default function ChatPage() {
 
   // Check authentication status
   useEffect(() => {
+    if (!supabase) return;
+    
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
     });
@@ -80,7 +82,7 @@ export default function ChatPage() {
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase.auth]);
+  }, []);
 
   // Load commands from localStorage
   useEffect(() => {

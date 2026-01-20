@@ -7,7 +7,7 @@ import { getChats, deleteChat, type Chat } from "@/lib/chatStorage";
 import { getChatsFromDB } from "@/lib/db/chatStorage";
 import { formatDistanceToNow } from "date-fns";
 import AuthModal from "@/components/AuthModal";
-import { createSupabaseClient } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export default function Home() {
   const [chats, setChats] = useState<Chat[]>([]);
@@ -16,7 +16,7 @@ export default function Home() {
   const [user, setUser] = useState<any>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   
-  const supabase = createSupabaseClient();
+  const supabase = getSupabaseClient();
 
   // Check if this is first visit
   useEffect(() => {
@@ -45,6 +45,8 @@ export default function Home() {
 
   // Check authentication status
   useEffect(() => {
+    if (!supabase) return;
+    
     // Get current user
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
@@ -62,7 +64,7 @@ export default function Home() {
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase.auth, loadChats]);
+  }, [loadChats]);
 
   // Load theme preference
   useEffect(() => {
@@ -127,11 +129,13 @@ export default function Home() {
             <button
               onClick={() => {
                 // Sign out immediately without waiting
-                supabase.auth.signOut().then(() => {
-                  setUser(null);
-                  // Reload page to clear all state
-                  window.location.reload();
-                });
+                if (supabase) {
+                  supabase.auth.signOut().then(() => {
+                    setUser(null);
+                    // Reload page to clear all state
+                    window.location.reload();
+                  });
+                }
               }}
               className="text-sm text-gray-400 hover:text-white"
             >

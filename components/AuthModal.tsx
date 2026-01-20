@@ -2,7 +2,7 @@
 
 import { X, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { useState, useEffect } from "react";
-import { createSupabaseClient } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -21,7 +21,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, theme }: AuthMod
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  const supabase = createSupabaseClient();
+  const supabase = getSupabaseClient();
 
   useEffect(() => {
     if (!isOpen) {
