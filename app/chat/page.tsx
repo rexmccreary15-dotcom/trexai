@@ -57,6 +57,7 @@ export default function ChatPage() {
   const [showStickyQuestion, setShowStickyQuestion] = useState(false);
   const [lastUserQuestion, setLastUserQuestion] = useState<string>("");
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [background, setBackground] = useState<string>(""); // Custom background (image or color)
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -92,6 +93,18 @@ export default function ChatPage() {
     const savedTheme = localStorage.getItem("theme") as "dark" | "light" | null;
     if (savedTheme) {
       setTheme(savedTheme);
+    }
+
+    // Load background preference (image or color)
+    const savedImage = localStorage.getItem("custom-background-image");
+    const savedColor = localStorage.getItem("custom-background-color");
+    if (savedImage) {
+      setBackground(savedImage);
+    } else if (savedColor) {
+      setBackground(savedColor);
+    } else {
+      // Default dark navy background
+      setBackground("#0f172a");
     }
   }, []);
 
@@ -441,10 +454,17 @@ export default function ChatPage() {
     sticky: theme === "dark" ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200",
   };
 
+  // Background style - check if it's a data URL (image) or color
+  const backgroundStyle = background
+    ? background.startsWith("data:") || background.startsWith("http") || background.startsWith("/")
+      ? { backgroundImage: `url(${background})`, backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" }
+      : { backgroundColor: background }
+    : { backgroundColor: "#0f172a" }; // Default dark navy
+
   return (
-    <div className={`flex flex-col h-screen ${themeClasses.bg} ${themeClasses.text}`}>
+    <div className={`flex flex-col h-screen ${themeClasses.text}`} style={backgroundStyle}>
       {/* Header */}
-      <header className={`border-b p-4 flex items-center justify-between ${themeClasses.border} ${themeClasses.bg}`}>
+      <header className={`border-b p-4 flex items-center justify-between ${themeClasses.border}`} style={{ backgroundColor: 'transparent' }}>
         <div className="flex items-center gap-4">
           <Link href="/" className={`p-1 rounded ${themeClasses.hover}`}>
             <Home size={20} />
@@ -608,8 +628,8 @@ export default function ChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <div className={`border-t p-4 ${themeClasses.border} ${themeClasses.bg}`}>
+        {/* Input Area */}
+        <div className={`border-t p-4 ${themeClasses.border}`} style={{ backgroundColor: 'transparent' }}>
         {/* Command Preview */}
         {commandPreview && (
           <div className="max-w-4xl mx-auto mb-2 px-2">
@@ -695,6 +715,8 @@ export default function ChatPage() {
         onMaxTokensChange={setMaxTokens}
         theme={theme}
         onThemeChange={setTheme}
+        background={background}
+        onBackgroundChange={setBackground}
       />
       <CommandsPanel
         isOpen={showCommands}

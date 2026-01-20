@@ -1,7 +1,7 @@
 "use client";
 
-import { X, Eye, EyeOff, Save, Moon, Sun, Lock, Unlock } from "lucide-react";
-import { useState, useEffect } from "react";
+import { X, Eye, EyeOff, Save, Moon, Sun, Lock, Unlock, Image as ImageIcon } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -14,6 +14,8 @@ interface SettingsPanelProps {
   onMaxTokensChange: (value: number) => void;
   theme: "dark" | "light";
   onThemeChange: (value: "dark" | "light") => void;
+  background: string;
+  onBackgroundChange: (value: string) => void;
 }
 
 export default function SettingsPanel({
@@ -27,11 +29,28 @@ export default function SettingsPanel({
   onMaxTokensChange,
   theme,
   onThemeChange,
+  background,
+  onBackgroundChange,
 }: SettingsPanelProps) {
   const [codeInput, setCodeInput] = useState("");
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [codeError, setCodeError] = useState("");
   const [codeSuccess, setCodeSuccess] = useState("");
+  const [backgroundImage, setBackgroundImage] = useState<string>("");
+  const [selectedColor, setSelectedColor] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load background preferences
+  useEffect(() => {
+    const savedImage = localStorage.getItem("custom-background-image");
+    const savedColor = localStorage.getItem("custom-background-color");
+    if (savedImage) {
+      setBackgroundImage(savedImage);
+    }
+    if (savedColor) {
+      setSelectedColor(savedColor);
+    }
+  }, []);
 
   useEffect(() => {
     const unlocked = localStorage.getItem("incognito-unlocked") === "true";
@@ -253,6 +272,102 @@ export default function SettingsPanel({
               </div>
             </div>
           )}
+
+          {/* Custom Background */}
+          <div className="space-y-4 pt-4 border-t border-gray-700">
+            <h3 className="font-semibold">Custom Background</h3>
+            
+            {/* Image Upload */}
+            <div className="space-y-2">
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                      const imageData = event.target?.result as string;
+                      setBackgroundImage(imageData);
+                      setSelectedColor(""); // Clear color selection
+                      onBackgroundChange(imageData);
+                      localStorage.setItem("custom-background-image", imageData);
+                      localStorage.removeItem("custom-background-color");
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className={`w-full px-4 py-3 rounded-lg border-2 border-dashed flex items-center justify-center gap-2 transition-colors ${
+                  theme === "dark"
+                    ? "border-gray-600 hover:border-purple-500 bg-gray-700/50 hover:bg-gray-700"
+                    : "border-gray-300 hover:border-purple-500 bg-gray-50 hover:bg-gray-100"
+                }`}
+              >
+                <ImageIcon size={20} />
+                <span>Upload Background Image</span>
+              </button>
+            </div>
+
+            {/* Primary Color Options */}
+            <div className="space-y-2">
+              <p className={`text-sm font-medium ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
+                Or choose a color:
+              </p>
+              <div className="grid grid-cols-5 gap-2">
+                {[
+                  { name: "Red", color: "#ef4444" },
+                  { name: "Blue", color: "#3b82f6" },
+                  { name: "Green", color: "#10b981" },
+                  { name: "Yellow", color: "#fbbf24" },
+                  { name: "Purple", color: "#a855f7" },
+                ].map((colorOption) => (
+                  <button
+                    key={colorOption.color}
+                    onClick={() => {
+                      setSelectedColor(colorOption.color);
+                      setBackgroundImage(""); // Clear image
+                      onBackgroundChange(colorOption.color);
+                      localStorage.setItem("custom-background-color", colorOption.color);
+                      localStorage.removeItem("custom-background-image");
+                    }}
+                    className={`h-12 rounded-lg border-2 transition-all ${
+                      selectedColor === colorOption.color || (!selectedColor && !backgroundImage && background === colorOption.color)
+                        ? "border-white ring-2 ring-purple-500"
+                        : theme === "dark"
+                        ? "border-gray-600 hover:border-gray-400"
+                        : "border-gray-300 hover:border-gray-500"
+                    }`}
+                    style={{ backgroundColor: colorOption.color }}
+                    title={colorOption.name}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Reset to Default */}
+            <button
+              onClick={() => {
+                setBackgroundImage("");
+                setSelectedColor("");
+                const defaultColor = "#0f172a"; // Dark navy
+                onBackgroundChange(defaultColor);
+                localStorage.removeItem("custom-background-image");
+                localStorage.removeItem("custom-background-color");
+              }}
+              className={`w-full px-4 py-2 rounded-lg transition-colors ${
+                theme === "dark"
+                  ? "bg-gray-700 hover:bg-gray-600 text-white"
+                  : "bg-gray-200 hover:bg-gray-300 text-gray-900"
+              }`}
+            >
+              Reset to Default
+            </button>
+          </div>
 
           {/* Other Options */}
           <div className="space-y-4 pt-4 border-t border-gray-700">
