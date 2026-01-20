@@ -180,19 +180,9 @@ export async function saveChatToDB(
         .insert(messagesToInsert);
     }
 
-    // Update user's message count
-    const { data: userData } = await adminClient
-      .from('users')
-      .select('message_count')
-      .eq('id', userId)
-      .single();
-    
-    if (userData) {
-      await adminClient
-        .from('users')
-        .update({ message_count: (userData.message_count || 0) + messages.length })
-        .eq('id', userId);
-    }
+    // Note: message_count is now updated in the API route when messages are sent
+    // This is kept here as a backup/fallback, but it might double-count
+    // The API route increments by 1 per message sent, which is more accurate
 
     return chatId;
   } catch (error) {
@@ -300,13 +290,20 @@ export async function trackAnalyticsEvent(
   metadata?: any
 ): Promise<void> {
   try {
+    if (!userId) {
+      console.warn('trackAnalyticsEvent called with null userId - skipping');
+      return;
+    }
+    
     const adminClient = createSupabaseAdmin();
+    console.log('Inserting analytics event:', { userId, eventType, aiModel });
+    
     const { data, error } = await adminClient
       .from('analytics_events')
       .insert({
         user_id: userId,
         event_type: eventType,
-        ai_model: aiModel,
+        ai_model: aiModel || null,
         metadata: metadata || {},
       })
       .select();
@@ -316,9 +313,15 @@ export async function trackAnalyticsEvent(
       console.error('Error code:', error.code);
       console.error('Error message:', error.message);
       console.error('Error details:', error.details);
+      console.error('Error hint:', error.hint);
       throw error;
     }
-    console.log('Analytics event inserted successfully:', data?.[0]?.id);
+    
+    if (data && data.length > 0) {
+      console.log('Analytics event inserted successfully:', data[0].id, 'at', data[0].created_at);
+    } else {
+      console.warn('Analytics event insert returned no data');
+    }
   } catch (error: any) {
     console.error('Error tracking analytics event:', error);
     console.error('Error details:', error?.message, error?.code, error?.details);

@@ -110,19 +110,42 @@ export async function POST(request: NextRequest) {
         
         // Track message sent event
         console.log("Tracking analytics event for user:", userId, "model:", model);
-        await trackAnalyticsEvent(userId, 'message_sent', model, {
-          has_image: !!imageData,
-          coding_mode: codingMode,
-        });
-        console.log("Analytics event tracked successfully");
+        try {
+          await trackAnalyticsEvent(userId, 'message_sent', model, {
+            has_image: !!imageData,
+            coding_mode: codingMode,
+          });
+          console.log("Analytics event tracked successfully");
+        } catch (analyticsError) {
+          console.error("Failed to track analytics event:", analyticsError);
+        }
         
-        // Update user's last_active
+        // Update user's last_active and increment message_count
         if (userId) {
-          const adminClient = createSupabaseAdmin();
-          await adminClient
-            .from('users')
-            .update({ last_active: new Date().toISOString() })
-            .eq('id', userId);
+          try {
+            const adminClient = createSupabaseAdmin();
+            // Get current message count
+            const { data: userData } = await adminClient
+              .from('users')
+              .select('message_count')
+              .eq('id', userId)
+              .single();
+            
+            const currentCount = userData?.message_count || 0;
+            
+            // Update last_active and increment message_count
+            await adminClient
+              .from('users')
+              .update({ 
+                last_active: new Date().toISOString(),
+                message_count: currentCount + 1
+              })
+              .eq('id', userId);
+            
+            console.log("User updated - message_count:", currentCount + 1);
+          } catch (updateError) {
+            console.error("Failed to update user:", updateError);
+          }
         }
       } catch (error) {
         console.error('Error tracking analytics:', error);

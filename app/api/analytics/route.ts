@@ -31,13 +31,33 @@ export async function GET(request: NextRequest) {
     const twentyFourHoursAgo = new Date();
     twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
     
+    // First, get all users to see what we have
+    const { data: allUsersSample, count: totalUsersCount, error: allUsersError } = await adminClient
+      .from('users')
+      .select('id, last_active, is_banned', { count: 'exact' })
+      .limit(10);
+    
+    console.log('All users sample:', { 
+      count: totalUsersCount, 
+      error: allUsersError?.message,
+      sample: allUsersSample?.slice(0, 3).map(u => ({ 
+        id: u.id, 
+        last_active: u.last_active, 
+        is_banned: u.is_banned 
+      }))
+    });
+    
     const { count: activeUsers, error: activeUsersError } = await adminClient
       .from('users')
       .select('*', { count: 'exact', head: true })
       .gte('last_active', twentyFourHoursAgo.toISOString())
       .eq('is_banned', false);
     
-    console.log('Active users query:', { count: activeUsers, error: activeUsersError?.message });
+    console.log('Active users query:', { 
+      count: activeUsers, 
+      error: activeUsersError?.message,
+      twentyFourHoursAgo: twentyFourHoursAgo.toISOString()
+    });
 
     // Get peak usage time (hour with most messages)
     const { data: hourlyData, error: hourlyError } = await adminClient
