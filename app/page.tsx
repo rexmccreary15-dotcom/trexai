@@ -83,18 +83,6 @@ export default function Home() {
     setChats(getChats());
   };
 
-  const getModelBadgeColor = (model: string) => {
-    switch (model) {
-      case "openai":
-        return "bg-green-600";
-      case "gemini":
-        return "bg-blue-600";
-      case "claude":
-        return "bg-purple-600";
-      default:
-        return "bg-gray-600";
-    }
-  };
 
   const handleStartNewChat = () => {
     // Check if first visit and user hasn't logged in
@@ -137,9 +125,13 @@ export default function Home() {
           <div className="flex items-center gap-2 bg-gray-800 px-4 py-2 rounded-lg">
             <span className="text-sm">{user.email}</span>
             <button
-              onClick={async () => {
-                await supabase.auth.signOut();
-                setUser(null);
+              onClick={() => {
+                // Sign out immediately without waiting
+                supabase.auth.signOut().then(() => {
+                  setUser(null);
+                  // Reload page to clear all state
+                  window.location.reload();
+                });
               }}
               className="text-sm text-gray-400 hover:text-white"
             >
@@ -155,7 +147,7 @@ export default function Home() {
             TREXAI
           </h1>
           <p className="text-xl text-gray-300 text-center mb-12">
-            Chat with multiple AI providers - ChatGPT, Gemini, and Claude
+            Chat with multiple AI providers
           </p>
 
           {chats.length > 0 ? (
@@ -183,9 +175,6 @@ export default function Home() {
 
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
-                      <span className={`px-2 py-1 rounded ${getModelBadgeColor(chat.aiModel)} text-white`}>
-                        {chat.aiModel === "openai" ? "ChatGPT" : chat.aiModel === "gemini" ? "Gemini" : "Claude"}
-                      </span>
                       <span className="text-gray-500">
                         {chat.messageCount} messages
                       </span>

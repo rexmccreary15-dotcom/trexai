@@ -47,15 +47,22 @@ export default function AuthModal({ isOpen, onClose, onSuccess, theme }: AuthMod
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
+          // Disable email confirmation - auto-confirm user
+          data: {
+            email_confirm: true
+          }
         },
       });
 
       if (signUpError) throw signUpError;
 
       if (data.user) {
-        setMessage("Verification email sent! Please check your inbox and click the verification link. After verifying, you can log in.");
-        // Don't switch to verify mode - Supabase sends a link, not a code
-        // User will click the link in their email, then can log in
+        // If user is created, they're automatically confirmed
+        setMessage("Account created successfully! Logging you in...");
+        setTimeout(() => {
+          onSuccess();
+          onClose();
+        }, 1000);
       }
     } catch (err: any) {
       setError(err.message || "Failed to sign up. Please try again.");
