@@ -370,9 +370,10 @@ export async function trackAnalyticsEvent(
     }
     
     if (data && data.length > 0) {
-      console.log('Analytics event inserted successfully:', data[0].id, 'at', data[0].created_at);
+      console.log('✓ Analytics event inserted successfully:', data[0].id, 'at', data[0].created_at);
+      console.log('Event details:', { userId, eventType, aiModel, metadata });
     } else {
-      console.warn('Analytics event insert returned no data');
+      console.warn('⚠ Analytics event insert returned no data');
     }
   } catch (error: any) {
     console.error('Error tracking analytics event:', error);

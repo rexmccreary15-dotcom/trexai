@@ -29,7 +29,11 @@ export async function GET(request: NextRequest) {
       .select('*', { count: 'exact', head: true })
       .eq('event_type', 'message_sent');
     
-    console.log('Total messages query:', { count: totalMessages, error: messagesError?.message });
+    console.log('Total messages query:', { 
+      count: totalMessages, 
+      error: messagesError?.message,
+      timestamp: new Date().toISOString()
+    });
 
     // Get active users (users active in last 24 hours)
     const twentyFourHoursAgo = new Date();

@@ -114,15 +114,15 @@ export default function CreatorControls({
     }
   }, []);
 
-  // Fetch analytics when analytics tab is opened, and auto-refresh every 3 seconds
+  // Fetch analytics when analytics tab is opened, and auto-refresh every 2 seconds
   useEffect(() => {
     if (isOpen && activeTab === "analytics") {
       // Fetch immediately
-      fetchAnalytics();
+      fetchAnalytics(true);
       
-      // Auto-refresh every 2 seconds when analytics tab is open (don't show loading spinner)
+      // Auto-refresh every 2 seconds when analytics tab is open
       const interval = setInterval(() => {
-        console.log("Auto-refreshing analytics...");
+        console.log("Auto-refreshing analytics at", new Date().toLocaleTimeString());
         fetchAnalytics(false); // Don't show loading spinner on auto-refresh
       }, 2000); // Refresh every 2 seconds for real-time updates
       
