@@ -15,6 +15,7 @@ import AccountSettings from "@/components/AccountSettings";
 import CreatorControls from "@/components/CreatorControls";
 import { saveChat, getChatMessages } from "@/lib/chatStorage";
 import { getSessionId, getChatsFromDB, getChatMessagesFromDB, saveChatToDB } from "@/lib/db/chatStorage";
+import { createSupabaseClient } from "@/lib/supabase";
 
 interface Command {
   id: string;
@@ -59,10 +60,42 @@ export default function ChatPage() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [background, setBackground] = useState<string>(""); // Custom background (image or color)
   const [transparentMessages, setTransparentMessages] = useState<boolean>(false);
+  const [user, setUser] = useState<any>(null); // Authenticated user
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const supabase = createSupabaseClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+
+  // Check authentication status
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Check authentication status
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Load commands from localStorage
   useEffect(() => {
@@ -418,6 +451,7 @@ export default function ChatPage() {
           imageMimeType: imageMimeType, // Send mime type for proper format handling
           chatId: chatId, // Include chatId for saving chats
           sessionId: sessionId, // Include sessionId for analytics tracking
+          authUserId: user?.id || null, // Include authenticated user ID if logged in
         }),
       });
 
@@ -442,7 +476,7 @@ export default function ChatPage() {
         if (!incognitoMode) {
           // Save to database
           try {
-            await saveChatToDB(chatId, updatedMessages, selectedAI, incognitoMode);
+            await saveChatToDB(chatId, updatedMessages, selectedAI, incognitoMode, user?.id);
           } catch (error) {
             console.error('Error saving to database:', error);
           }

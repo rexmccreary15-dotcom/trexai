@@ -19,28 +19,66 @@ export function getSessionId(): string {
   return sessionId;
 }
 
-// Get or create a user by session ID
-export async function getOrCreateUser(sessionId: string): Promise<string | null> {
+// Get or create a user by session ID or authenticated user ID
+export async function getOrCreateUser(sessionId: string, authUserId?: string): Promise<string | null> {
   try {
     const adminClient = createSupabaseAdmin();
     console.log('=== getOrCreateUser START ===');
-    console.log('Looking for user with sessionId:', sessionId);
+    console.log('Looking for user with sessionId:', sessionId, 'authUserId:', authUserId);
     
+    // If user is authenticated, use their auth user ID
+    if (authUserId) {
+      // Check if user exists in our users table
+      const { data: existingUser } = await adminClient
+        .from('users')
+        .select('id')
+        .eq('auth_user_id', authUserId)
+        .maybeSingle();
+
+      if (existingUser) {
+        console.log('Found existing authenticated user:', existingUser.id);
+        await adminClient
+          .from('users')
+          .update({ last_active: new Date().toISOString() })
+          .eq('id', existingUser.id);
+        return existingUser.id;
+      }
+
+      // Create new user with auth_user_id
+      const { data: newUser, error: createError } = await adminClient
+        .from('users')
+        .insert({
+          auth_user_id: authUserId,
+          session_id: sessionId, // Keep session_id for backward compatibility
+          last_active: new Date().toISOString(),
+        })
+        .select('id')
+        .single();
+
+      if (createError) {
+        console.error('Failed to create authenticated user:', createError);
+        return null;
+      }
+
+      console.log('Successfully created authenticated user:', newUser.id);
+      return newUser.id;
+    }
+    
+    // Fallback to anonymous user (session ID only)
     // First, try to find existing user
     const { data: existingUser, error: findError } = await adminClient
       .from('users')
       .select('id')
       .eq('session_id', sessionId)
-      .maybeSingle(); // Use maybeSingle() instead of single() to avoid error if not found
+      .is('auth_user_id', null) // Only match anonymous users
+      .maybeSingle();
 
     if (existingUser && !findError) {
-      console.log('Found existing user:', existingUser.id);
-      // Update last_active
+      console.log('Found existing anonymous user:', existingUser.id);
       await adminClient
         .from('users')
         .update({ last_active: new Date().toISOString() })
         .eq('id', existingUser.id);
-      
       return existingUser.id;
     }
 
@@ -48,8 +86,8 @@ export async function getOrCreateUser(sessionId: string): Promise<string | null>
       console.error('Error finding user:', findError);
     }
 
-    // Create new user
-    console.log('Creating new user with sessionId:', sessionId);
+    // Create new anonymous user
+    console.log('Creating new anonymous user with sessionId:', sessionId);
     const { data: newUser, error: createError } = await adminClient
       .from('users')
       .insert({
@@ -61,9 +99,6 @@ export async function getOrCreateUser(sessionId: string): Promise<string | null>
 
     if (createError) {
       console.error('Failed to create user:', createError);
-      console.error('Error code:', createError.code);
-      console.error('Error message:', createError.message);
-      console.error('Error details:', createError.details);
       return null;
     }
 
@@ -72,13 +107,11 @@ export async function getOrCreateUser(sessionId: string): Promise<string | null>
       return null;
     }
 
-    console.log('Successfully created user:', newUser.id);
+    console.log('Successfully created anonymous user:', newUser.id);
     console.log('=== getOrCreateUser END ===');
     return newUser.id;
   } catch (error: any) {
     console.error('Error in getOrCreateUser:', error);
-    console.error('Error message:', error?.message);
-    console.error('Error stack:', error?.stack);
     return null;
   }
 }
@@ -88,7 +121,8 @@ export async function saveChatToDB(
   chatId: string,
   messages: any[],
   aiModel: string,
-  incognito: boolean = false
+  incognito: boolean = false,
+  authUserId?: string
 ): Promise<string> {
   if (incognito) return chatId; // Don't save incognito chats
 
@@ -100,7 +134,7 @@ export async function saveChatToDB(
       return chatId;
     }
 
-    const userId = await getOrCreateUser(sessionId);
+    const userId = await getOrCreateUser(sessionId, authUserId);
     if (!userId) {
       console.error('Failed to get/create user');
       return chatId;
@@ -192,18 +226,29 @@ export async function saveChatToDB(
 }
 
 // Get chats for current user
-export async function getChatsFromDB(): Promise<Chat[]> {
+export async function getChatsFromDB(authUserId?: string): Promise<Chat[]> {
   try {
     const adminClient = createSupabaseAdmin();
     const sessionId = getSessionId();
-    if (!sessionId) return [];
+    if (!sessionId && !authUserId) return [];
 
-    // Get user ID
-    const { data: user } = await adminClient
-      .from('users')
-      .select('id')
-      .eq('session_id', sessionId)
-      .single();
+    // Get user ID - prefer authenticated user, fallback to session
+    let user;
+    if (authUserId) {
+      const { data } = await adminClient
+        .from('users')
+        .select('id')
+        .eq('auth_user_id', authUserId)
+        .maybeSingle();
+      user = data;
+    } else if (sessionId) {
+      const { data } = await adminClient
+        .from('users')
+        .select('id')
+        .eq('session_id', sessionId)
+        .maybeSingle();
+      user = data;
+    }
 
     if (!user) return [];
 

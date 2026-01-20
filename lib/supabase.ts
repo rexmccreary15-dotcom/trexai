@@ -32,3 +32,11 @@ export function createSupabaseAdmin() {
 
 // Client-side Supabase instance
 export const supabase = typeof window !== 'undefined' ? createSupabaseClient() : null;
+
+// Helper to get current user (client-side only)
+export async function getCurrentUser() {
+  if (typeof window === 'undefined') return null;
+  const client = createSupabaseClient();
+  const { data: { user } } = await client.auth.getUser();
+  return user;
+}
