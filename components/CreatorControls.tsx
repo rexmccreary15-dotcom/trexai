@@ -1,7 +1,7 @@
 "use client";
 
 import { X, BarChart3, Palette, Shield, Settings, Users, Download, Zap, Key, ToggleLeft, FileText } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 interface CreatorControlsProps {
   isOpen: boolean;
@@ -41,7 +41,7 @@ export default function CreatorControls({
     if (isOpen && activeTab === "users") {
       fetchUsers();
     }
-  }, [isOpen, activeTab, usersPage]);
+  }, [isOpen, activeTab, fetchUsers]);
 
   // Fetch settings when respective tabs are opened
   useEffect(() => {
@@ -83,7 +83,7 @@ export default function CreatorControls({
     }
   };
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setUsersLoading(true);
     try {
       const response = await fetch(`/api/users?page=${usersPage}&limit=20`);
@@ -96,7 +96,7 @@ export default function CreatorControls({
     } finally {
       setUsersLoading(false);
     }
-  };
+  }, [usersPage]);
 
   const fetchUserDetails = async (userId: string) => {
     try {
