@@ -37,10 +37,11 @@ export async function getOrCreateUser(sessionId: string, authUserId?: string, au
 
       if (existingUser) {
         console.log('Found existing authenticated user:', existingUser.id);
-        // Update email if we have it and it's different
+        // Always update email if we have it (even if it's the same, to ensure it's saved)
         const updateData: any = { last_active: new Date().toISOString() };
-        if (authUserEmail && existingUser.email !== authUserEmail) {
+        if (authUserEmail) {
           updateData.email = authUserEmail;
+          console.log('Updating user email to:', authUserEmail);
         }
         await adminClient
           .from('users')

@@ -73,8 +73,11 @@ export default function CreatorControls({
     }
   }, [usersPage]);
 
-  const fetchAnalytics = useCallback(async () => {
-    setAnalyticsLoading(true);
+  const fetchAnalytics = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setAnalyticsLoading(true);
+    }
+    
     try {
       // Add timestamp to prevent browser caching
       const response = await fetch(`/api/analytics?t=${Date.now()}`, {
@@ -87,21 +90,27 @@ export default function CreatorControls({
       console.log("Analytics API response:", data);
       if (data.error) {
         console.error("Analytics API returned error:", data.error, data.errorMessage);
-        alert(`Analytics Error: ${data.errorMessage || data.error}`);
+        if (showLoading) {
+          alert(`Analytics Error: ${data.errorMessage || data.error}`);
+        }
       }
       setAnalytics(data);
     } catch (error) {
       console.error("Error fetching analytics:", error);
-      setAnalytics({
-        totalMessages: 0,
-        activeUsers: 0,
-        totalUsers: 0,
-        messagesToday: 0,
-        peakUsageTime: "N/A",
-        popularModels: [],
-      });
+      if (showLoading) {
+        setAnalytics({
+          totalMessages: 0,
+          activeUsers: 0,
+          totalUsers: 0,
+          messagesToday: 0,
+          peakUsageTime: "N/A",
+          popularModels: [],
+        });
+      }
     } finally {
-      setAnalyticsLoading(false);
+      if (showLoading) {
+        setAnalyticsLoading(false);
+      }
     }
   }, []);
 
@@ -111,11 +120,11 @@ export default function CreatorControls({
       // Fetch immediately
       fetchAnalytics();
       
-      // Auto-refresh every 3 seconds when analytics tab is open
+      // Auto-refresh every 2 seconds when analytics tab is open (don't show loading spinner)
       const interval = setInterval(() => {
         console.log("Auto-refreshing analytics...");
-        fetchAnalytics();
-      }, 3000); // Reduced to 3 seconds for faster updates
+        fetchAnalytics(false); // Don't show loading spinner on auto-refresh
+      }, 2000); // Refresh every 2 seconds for real-time updates
       
       return () => {
         console.log("Clearing analytics interval");
