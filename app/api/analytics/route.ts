@@ -64,6 +64,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Get peak usage time (hour with most messages)
+    // Database stores times in UTC, but we'll calculate in both UTC and convert to US timezones
     const { data: hourlyData, error: hourlyError } = await adminClient
       .from('analytics_events')
       .select('created_at')
@@ -71,29 +72,57 @@ export async function GET(request: NextRequest) {
     
     console.log('Hourly data query:', { count: hourlyData?.length || 0, error: hourlyError?.message });
 
-    const hourlyCounts: { [key: number]: number } = {};
+    // Count by UTC hour and by US Mountain Time (Colorado) hour
+    const utcHourlyCounts: { [key: number]: number } = {};
+    const mstHourlyCounts: { [key: number]: number } = {}; // Mountain Standard Time
+    
     hourlyData?.forEach((event) => {
-      const hour = new Date(event.created_at).getHours();
-      hourlyCounts[hour] = (hourlyCounts[hour] || 0) + 1;
+      const eventDate = new Date(event.created_at);
+      
+      // Get UTC hour
+      const utcHour = eventDate.getUTCHours();
+      utcHourlyCounts[utcHour] = (utcHourlyCounts[utcHour] || 0) + 1;
+      
+      // Convert to Mountain Time (UTC-6 or UTC-7 depending on DST)
+      // For simplicity, we'll use a fixed offset. In production, use a timezone library.
+      // Colorado is UTC-7 in winter (MST) and UTC-6 in summer (MDT)
+      // Estimate: assume UTC-7 for now (can be improved with timezone library)
+      let mstHour = utcHour - 7;
+      if (mstHour < 0) mstHour += 24;
+      mstHourlyCounts[mstHour] = (mstHourlyCounts[mstHour] || 0) + 1;
     });
 
+    // Find peak hour in Mountain Time (since user is in Colorado)
     let peakHour: number | null = null;
     let maxCount = 0;
-    Object.entries(hourlyCounts).forEach(([hour, count]) => {
+    Object.entries(mstHourlyCounts).forEach(([hour, count]) => {
       if (count > maxCount) {
         maxCount = count;
         peakHour = parseInt(hour);
       }
     });
 
-    // Only show peak time if we actually have data
-    const peakUsageTime = peakHour === null || maxCount === 0 ? 'N/A' : 
-      peakHour === 0 ? '12:00 AM' : 
-      peakHour < 12 ? `${peakHour}:00 AM` : 
-      peakHour === 12 ? '12:00 PM' : 
-      `${peakHour - 12}:00 PM`;
+    // Format peak time
+    let peakUsageTime = 'N/A';
+    if (peakHour !== null && maxCount > 0) {
+      if (peakHour === 0) {
+        peakUsageTime = '12:00 AM (MT)';
+      } else if (peakHour < 12) {
+        peakUsageTime = `${peakHour}:00 AM (MT)`;
+      } else if (peakHour === 12) {
+        peakUsageTime = '12:00 PM (MT)';
+      } else {
+        peakUsageTime = `${peakHour - 12}:00 PM (MT)`;
+      }
+    }
 
-    console.log('Peak usage calculation:', { peakHour, maxCount, peakUsageTime });
+    console.log('Peak usage calculation:', { 
+      peakHour, 
+      maxCount, 
+      peakUsageTime,
+      utcHourlyCounts,
+      mstHourlyCounts
+    });
 
     // Get popular AI models
     const { data: modelData, error: modelError } = await adminClient

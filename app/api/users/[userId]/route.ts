@@ -36,8 +36,33 @@ export async function GET(
       .order('updated_at', { ascending: false })
       .limit(100);
 
+    // Recalculate actual message count from analytics events (more accurate)
+    const { count: actualMessageCount, error: countError } = await adminClient
+      .from('analytics_events')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('event_type', 'message_sent');
+
+    if (countError) {
+      console.error('Error counting messages:', countError);
+    }
+
+    // Update the user's message_count in the database if it's different
+    const storedCount = user.message_count || 0;
+    const realCount = actualMessageCount || 0;
+    
+    if (realCount !== storedCount && realCount > 0) {
+      console.log(`Updating user ${userId} message_count: ${storedCount} -> ${realCount}`);
+      await adminClient
+        .from('users')
+        .update({ message_count: realCount })
+        .eq('id', userId);
+      user.message_count = realCount;
+    }
+
     return NextResponse.json({
       ...user,
+      message_count: realCount, // Always return the actual count
       chats: chats || [],
     });
   } catch (error: any) {
