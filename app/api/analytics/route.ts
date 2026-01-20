@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabase";
 
+// Disable caching for analytics - always get fresh data
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(request: NextRequest) {
   try {
     const adminClient = createSupabaseAdmin();
@@ -145,7 +149,14 @@ export async function GET(request: NextRequest) {
     console.log('=== ANALYTICS API RESULT ===', result);
     console.log('=== ANALYTICS API END ===');
 
-    return NextResponse.json(result);
+    // Return with no-cache headers to ensure fresh data
+    return NextResponse.json(result, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    });
   } catch (error: any) {
     console.error('Error fetching analytics:', error);
     console.error('Error details:', error?.message, error?.stack);

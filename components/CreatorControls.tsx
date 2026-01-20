@@ -76,7 +76,13 @@ export default function CreatorControls({
   const fetchAnalytics = async () => {
     setAnalyticsLoading(true);
     try {
-      const response = await fetch("/api/analytics");
+      // Add timestamp to prevent browser caching
+      const response = await fetch(`/api/analytics?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
       const data = await response.json();
       console.log("Analytics API response:", data);
       if (data.error) {
@@ -99,10 +105,17 @@ export default function CreatorControls({
     }
   };
 
-  // Fetch analytics when analytics tab is opened
+  // Fetch analytics when analytics tab is opened, and auto-refresh every 5 seconds
   useEffect(() => {
     if (isOpen && activeTab === "analytics") {
       fetchAnalytics();
+      
+      // Auto-refresh every 5 seconds when analytics tab is open
+      const interval = setInterval(() => {
+        fetchAnalytics();
+      }, 5000);
+      
+      return () => clearInterval(interval);
     }
   }, [isOpen, activeTab]);
 

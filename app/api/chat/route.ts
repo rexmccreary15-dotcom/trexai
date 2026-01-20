@@ -43,20 +43,68 @@ export async function POST(request: NextRequest) {
     console.log("API received - sessionId:", sessionId || "MISSING!", "chatId:", chatId || "MISSING!", "incognito:", incognito);
     console.log("=== API REQUEST START ===");
 
-    // Track analytics and get user ID
+    // Track analytics and get user ID - MUST happen BEFORE processing the message
     let userId: string | null = null;
     if (!incognito && sessionId) {
       try {
-        console.log("Creating/getting user for session:", sessionId);
+        console.log("=== ANALYTICS TRACKING START ===");
+        console.log("Session ID:", sessionId);
+        console.log("Incognito mode:", incognito);
+        
         userId = await getOrCreateUser(sessionId);
-        console.log("User ID result:", userId || "NULL - User creation failed!");
+        console.log("User ID:", userId || "NULL - User creation failed!");
         
         if (!userId) {
           console.error("CRITICAL: Failed to get/create user. Analytics will not work!");
-        }
-        
-        // Check rate limits
-        if (userId) {
+        } else {
+          // Track message sent event IMMEDIATELY - before any other processing
+          console.log("Tracking analytics event - userId:", userId, "model:", model);
+          try {
+            await trackAnalyticsEvent(userId, 'message_sent', model, {
+              has_image: !!imageData,
+              coding_mode: codingMode,
+            });
+            console.log("? Analytics event tracked successfully");
+          } catch (analyticsError: any) {
+            console.error("? Failed to track analytics event:", analyticsError);
+            console.error("Error details:", analyticsError?.message, analyticsError?.code, analyticsError?.details);
+          }
+          
+          // Update user's last_active and increment message_count
+          try {
+            const adminClient = createSupabaseAdmin();
+            // Get current message count
+            const { data: userData, error: userError } = await adminClient
+              .from('users')
+              .select('message_count')
+              .eq('id', userId)
+              .single();
+            
+            if (userError) {
+              console.error("Error fetching user data:", userError);
+            } else {
+              const currentCount = userData?.message_count || 0;
+              
+              // Update last_active and increment message_count
+              const { error: updateError } = await adminClient
+                .from('users')
+                .update({ 
+                  last_active: new Date().toISOString(),
+                  message_count: currentCount + 1
+                })
+                .eq('id', userId);
+              
+              if (updateError) {
+                console.error("Error updating user:", updateError);
+              } else {
+                console.log("? User updated - message_count:", currentCount + 1);
+              }
+            }
+          } catch (updateError: any) {
+            console.error("? Failed to update user:", updateError);
+          }
+          
+          // Check rate limits AFTER tracking (so we have the event in the DB)
           try {
             const adminClient = createSupabaseAdmin();
             const { data: settings } = await adminClient
@@ -108,49 +156,15 @@ export async function POST(request: NextRequest) {
           }
         }
         
-        // Track message sent event
-        console.log("Tracking analytics event for user:", userId, "model:", model);
-        try {
-          await trackAnalyticsEvent(userId, 'message_sent', model, {
-            has_image: !!imageData,
-            coding_mode: codingMode,
-          });
-          console.log("Analytics event tracked successfully");
-        } catch (analyticsError) {
-          console.error("Failed to track analytics event:", analyticsError);
-        }
-        
-        // Update user's last_active and increment message_count
-        if (userId) {
-          try {
-            const adminClient = createSupabaseAdmin();
-            // Get current message count
-            const { data: userData } = await adminClient
-              .from('users')
-              .select('message_count')
-              .eq('id', userId)
-              .single();
-            
-            const currentCount = userData?.message_count || 0;
-            
-            // Update last_active and increment message_count
-            await adminClient
-              .from('users')
-              .update({ 
-                last_active: new Date().toISOString(),
-                message_count: currentCount + 1
-              })
-              .eq('id', userId);
-            
-            console.log("User updated - message_count:", currentCount + 1);
-          } catch (updateError) {
-            console.error("Failed to update user:", updateError);
-          }
-        }
-      } catch (error) {
-        console.error('Error tracking analytics:', error);
-        // Continue even if analytics fails
+        console.log("=== ANALYTICS TRACKING END ===");
+      } catch (error: any) {
+        console.error('? Error in analytics tracking block:', error);
+        console.error('Error message:', error?.message);
+        console.error('Error stack:', error?.stack);
+        // Continue even if analytics fails - don't break the chat
       }
+    } else {
+      console.log("Analytics skipped - incognito:", incognito, "sessionId:", sessionId);
     }
     
     // Check content moderation
@@ -211,7 +225,7 @@ export async function POST(request: NextRequest) {
       // MyAI (free Hugging Face models) doesn't support vision/images
       if (imageData) {
         return NextResponse.json({
-          error: "Image uploads are not supported with MyAI (free mode). Please use ChatGPT, Gemini, or Claude for image analysis. Add your API keys in Account Settings (👤 icon).",
+          error: "Image uploads are not supported with MyAI (free mode). Please use ChatGPT, Gemini, or Claude for image analysis. Add your API keys in Account Settings (?? icon).",
         }, { status: 400 });
       }
 
@@ -238,7 +252,7 @@ export async function POST(request: NextRequest) {
       if (!apiKey) {
         return NextResponse.json(
           { 
-            error: "OpenAI API key required! Click the 👤 icon in the header, add your OpenAI API key, and click Save Settings. Get your key at: https://platform.openai.com/api-keys" 
+            error: "OpenAI API key required! Click the ?? icon in the header, add your OpenAI API key, and click Save Settings. Get your key at: https://platform.openai.com/api-keys" 
           },
           { status: 400 }
         );
@@ -337,7 +351,7 @@ export async function POST(request: NextRequest) {
       if (!apiKey) {
         return NextResponse.json(
           { 
-            error: "Gemini API key required! Click the 👤 icon in the header, add your Gemini API key, and click Save Settings. Get your free key at: https://aistudio.google.com/app/apikey" 
+            error: "Gemini API key required! Click the ?? icon in the header, add your Gemini API key, and click Save Settings. Get your free key at: https://aistudio.google.com/app/apikey" 
           },
           { status: 400 }
         );
@@ -516,7 +530,7 @@ export async function POST(request: NextRequest) {
         
         if (geminiError.message) {
           if (geminiError.message.includes("API_KEY_INVALID") || geminiError.message.includes("401")) {
-            errorMessage = "Invalid Gemini API key. Please check your key in Account Settings (👤 icon).";
+            errorMessage = "Invalid Gemini API key. Please check your key in Account Settings (?? icon).";
           } else if (geminiError.message.includes("429") || geminiError.message.includes("quota")) {
             errorMessage = "Gemini API quota exceeded. Please check your usage or try again later.";
           } else {
@@ -540,7 +554,7 @@ export async function POST(request: NextRequest) {
       if (!apiKey) {
         return NextResponse.json(
           { 
-            error: "Claude API key required! Click the 👤 icon in the header, add your Claude API key, and click Save Settings. Get your key at: https://console.anthropic.com/" 
+            error: "Claude API key required! Click the ?? icon in the header, add your Claude API key, and click Save Settings. Get your key at: https://console.anthropic.com/" 
           },
           { status: 400 }
         );
