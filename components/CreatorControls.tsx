@@ -29,32 +29,7 @@ export default function CreatorControls({
   const [featureSettings, setFeatureSettings] = useState<any>({});
   const [advancedSettings, setAdvancedSettings] = useState<any>({});
 
-  // Fetch analytics when analytics tab is opened
-  useEffect(() => {
-    if (isOpen && activeTab === "analytics") {
-      fetchAnalytics();
-    }
-  }, [isOpen, activeTab]);
-
-  // Fetch users when users tab is opened
-  useEffect(() => {
-    if (isOpen && activeTab === "users") {
-      fetchUsers();
-    }
-  }, [isOpen, activeTab, fetchUsers]);
-
-  // Fetch settings when respective tabs are opened
-  useEffect(() => {
-    if (isOpen) {
-      if (activeTab === "branding") fetchSettings("branding", setBrandingSettings);
-      if (activeTab === "moderation") fetchSettings("moderation", setModerationSettings);
-      if (activeTab === "ai-config") fetchSettings("ai_config", setAiConfigSettings);
-      if (activeTab === "rate-limit") fetchSettings("rate_limit", setRateLimitSettings);
-      if (activeTab === "features") fetchSettings("features", setFeatureSettings);
-      if (activeTab === "advanced") fetchSettings("advanced", setAdvancedSettings);
-    }
-  }, [isOpen, activeTab]);
-
+  // Define functions BEFORE useEffect hooks that use them
   const fetchSettings = async (type: string, setter: any) => {
     try {
       const response = await fetch(`/api/settings/${type}`);
@@ -98,6 +73,58 @@ export default function CreatorControls({
     }
   }, [usersPage]);
 
+  const fetchAnalytics = async () => {
+    setAnalyticsLoading(true);
+    try {
+      const response = await fetch("/api/analytics");
+      const data = await response.json();
+      console.log("Analytics API response:", data);
+      if (data.error) {
+        console.error("Analytics API returned error:", data.error, data.errorMessage);
+        alert(`Analytics Error: ${data.errorMessage || data.error}`);
+      }
+      setAnalytics(data);
+    } catch (error) {
+      console.error("Error fetching analytics:", error);
+      setAnalytics({
+        totalMessages: 0,
+        activeUsers: 0,
+        totalUsers: 0,
+        messagesToday: 0,
+        peakUsageTime: "N/A",
+        popularModels: [],
+      });
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
+
+  // Fetch analytics when analytics tab is opened
+  useEffect(() => {
+    if (isOpen && activeTab === "analytics") {
+      fetchAnalytics();
+    }
+  }, [isOpen, activeTab]);
+
+  // Fetch users when users tab is opened
+  useEffect(() => {
+    if (isOpen && activeTab === "users") {
+      fetchUsers();
+    }
+  }, [isOpen, activeTab, fetchUsers]);
+
+  // Fetch settings when respective tabs are opened
+  useEffect(() => {
+    if (isOpen) {
+      if (activeTab === "branding") fetchSettings("branding", setBrandingSettings);
+      if (activeTab === "moderation") fetchSettings("moderation", setModerationSettings);
+      if (activeTab === "ai-config") fetchSettings("ai_config", setAiConfigSettings);
+      if (activeTab === "rate-limit") fetchSettings("rate_limit", setRateLimitSettings);
+      if (activeTab === "features") fetchSettings("features", setFeatureSettings);
+      if (activeTab === "advanced") fetchSettings("advanced", setAdvancedSettings);
+    }
+  }, [isOpen, activeTab]);
+
   const fetchUserDetails = async (userId: string) => {
     try {
       const response = await fetch(`/api/users/${userId}`);
@@ -139,32 +166,6 @@ export default function CreatorControls({
       setSelectedUser(null);
     } catch (error) {
       console.error("Error deleting user:", error);
-    }
-  };
-
-  const fetchAnalytics = async () => {
-    setAnalyticsLoading(true);
-    try {
-      const response = await fetch("/api/analytics");
-      const data = await response.json();
-      console.log("Analytics API response:", data);
-      if (data.error) {
-        console.error("Analytics API returned error:", data.error, data.errorMessage);
-        alert(`Analytics Error: ${data.errorMessage || data.error}`);
-      }
-      setAnalytics(data);
-    } catch (error) {
-      console.error("Error fetching analytics:", error);
-      setAnalytics({
-        totalMessages: 0,
-        activeUsers: 0,
-        totalUsers: 0,
-        messagesToday: 0,
-        peakUsageTime: "N/A",
-        popularModels: [],
-      });
-    } finally {
-      setAnalyticsLoading(false);
     }
   };
 
