@@ -795,6 +795,7 @@ export default function ChatPage() {
           setCodingMode(enabled);
           localStorage.setItem("coding-mode", enabled.toString());
         }}
+        theme={theme}
       />
       <CreatorControls
         isOpen={showCreatorControls}
