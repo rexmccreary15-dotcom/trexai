@@ -16,6 +16,8 @@ interface SettingsPanelProps {
   onThemeChange: (value: "dark" | "light") => void;
   background: string;
   onBackgroundChange: (value: string) => void;
+  transparentMessages: boolean;
+  onTransparentMessagesChange: (value: boolean) => void;
 }
 
 export default function SettingsPanel({
@@ -31,6 +33,8 @@ export default function SettingsPanel({
   onThemeChange,
   background,
   onBackgroundChange,
+  transparentMessages,
+  onTransparentMessagesChange,
 }: SettingsPanelProps) {
   const [codeInput, setCodeInput] = useState("");
   const [isUnlocked, setIsUnlocked] = useState(false);
@@ -375,20 +379,21 @@ export default function SettingsPanel({
 
             <div className="space-y-3">
               <label className="flex items-center gap-3 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  className="w-4 h-4" 
+                  checked={transparentMessages}
+                  onChange={(e) => onTransparentMessagesChange(e.target.checked)}
+                />
+                <span>Transparent message boxes</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
                 <input type="checkbox" className="w-4 h-4" defaultChecked />
                 <span>Stream responses</span>
               </label>
               <label className="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" className="w-4 h-4" />
-                <span>Show token count</span>
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer">
                 <input type="checkbox" className="w-4 h-4" defaultChecked />
                 <span>Auto-scroll to latest message</span>
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" className="w-4 h-4" />
-                <span>Enable code syntax highlighting</span>
               </label>
             </div>
           </div>

@@ -58,6 +58,7 @@ export default function ChatPage() {
   const [lastUserQuestion, setLastUserQuestion] = useState<string>("");
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [background, setBackground] = useState<string>(""); // Custom background (image or color)
+  const [transparentMessages, setTransparentMessages] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -106,6 +107,10 @@ export default function ChatPage() {
       // Default dark navy background
       setBackground("#0f172a");
     }
+
+    // Load transparent messages preference
+    const savedTransparent = localStorage.getItem("transparent-messages") === "true";
+    setTransparentMessages(savedTransparent);
   }, []);
 
   // Apply theme to document
@@ -575,10 +580,13 @@ export default function ChatPage() {
               }`}
           >
             <div
-              className={`max-w-3xl rounded-lg p-4 relative group ${msg.role === "user"
-                ? themeClasses.messageUser
-                : `${themeClasses.messageAI} border`
-                }`}
+              className={`max-w-3xl rounded-lg p-4 relative group ${
+                transparentMessages
+                  ? "bg-transparent border-2 border-opacity-50 " + (msg.role === "user" ? "border-blue-400" : "border-gray-500")
+                  : msg.role === "user"
+                  ? themeClasses.messageUser
+                  : `${themeClasses.messageAI} border`
+              }`}
             >
               {msg.imageUrls && msg.imageUrls.length > 0 && (
                 <div className="flex gap-2 mb-2 flex-wrap">
@@ -616,7 +624,11 @@ export default function ChatPage() {
         ))}
         {isLoading && (
           <div className="flex justify-start">
-            <div className={`${themeClasses.messageAI} border rounded-lg p-4`}>
+            <div className={`${
+              transparentMessages
+                ? "bg-transparent border-2 border-opacity-50 border-gray-500"
+                : `${themeClasses.messageAI} border`
+            } rounded-lg p-4`}>
               <div className="flex gap-2">
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
@@ -717,6 +729,11 @@ export default function ChatPage() {
         onThemeChange={setTheme}
         background={background}
         onBackgroundChange={setBackground}
+        transparentMessages={transparentMessages}
+        onTransparentMessagesChange={(value) => {
+          setTransparentMessages(value);
+          localStorage.setItem("transparent-messages", value.toString());
+        }}
       />
       <CommandsPanel
         isOpen={showCommands}
