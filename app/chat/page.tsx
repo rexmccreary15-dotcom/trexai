@@ -595,7 +595,7 @@ export default function ChatPage() {
             <div
               className={`max-w-3xl rounded-lg p-4 relative group ${
                 transparentMessages
-                  ? "bg-transparent/30 border-2 " + (msg.role === "user" ? "border-blue-400/50" : "border-gray-500/50")
+                  ? "bg-transparent border-transparent"
                   : msg.role === "user"
                   ? themeClasses.messageUser
                   : `${themeClasses.messageAI} border`
@@ -639,7 +639,7 @@ export default function ChatPage() {
           <div className="flex justify-start">
             <div className={`${
               transparentMessages
-                ? "bg-transparent/30 border-2 border-gray-500/50"
+                ? "bg-transparent border-transparent"
                 : `${themeClasses.messageAI} border`
             } rounded-lg p-4`}>
               <div className="flex gap-2">
