@@ -75,69 +75,63 @@ export default function ChatPage() {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
-  // Auth: use getSession() for initial state (reliable after nav). Load creator controls if logged in.
+  // Auth: getSession() init; only clear on SIGNED_OUT. Load creator controls when logged in.
   useEffect(() => {
     if (!supabase) return;
 
     const load = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const u = session?.user ?? null;
+        setUser(u);
+        setCreatorUnlocked(false);
+        if (u && session?.access_token) {
+          try {
+            const res = await fetch("/api/creator-controls", {
+              headers: { "Authorization": `Bearer ${session.access_token}` },
+            });
+            if (res.ok) {
+              const d = await res.json();
+              setCreatorUnlocked(!!d.unlocked);
+            }
+          } catch {
+            setCreatorUnlocked(false);
+          }
+        }
+      } catch (e) {
+        console.error("Auth load error:", e);
+        setUser(null);
+        setCreatorUnlocked(false);
+      }
+    };
+    load();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_OUT") {
+        setUser(null);
+        setCreatorUnlocked(false);
+        setIncognitoMode(false);
+        return;
+      }
       const u = session?.user ?? null;
       setUser(u);
       setCreatorUnlocked(false);
-      if (u) {
+      if (u && session?.access_token) {
         try {
           const res = await fetch("/api/creator-controls", {
-            headers: { "Authorization": `Bearer ${session!.access_token}` },
+            headers: { "Authorization": `Bearer ${session.access_token}` },
           });
           if (res.ok) {
-            const data = await res.json();
-            setCreatorUnlocked(!!data.unlocked);
+            const d = await res.json();
+            setCreatorUnlocked(!!d.unlocked);
           }
         } catch {
           setCreatorUnlocked(false);
         }
       }
-    };
-
-    load();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      
-      // IMPORTANT: Always clear creatorUnlocked first when auth state changes
-      setCreatorUnlocked(false);
-      
-      // Reload creator controls status when auth state changes (only if logged in)
-      if (currentUser && session) {
-        try {
-          const response = await fetch("/api/creator-controls", {
-            headers: {
-              "Authorization": `Bearer ${session.access_token}`,
-            },
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            setCreatorUnlocked(data.unlocked || false);
-          } else {
-            setCreatorUnlocked(false);
-          }
-        } catch (error) {
-          console.error("Error loading creator controls status:", error);
-          setCreatorUnlocked(false);
-        }
-      }
-      // If no user, creatorUnlocked is already set to false above
     });
 
-    return () => {
-      if (subscription) {
-        subscription.unsubscribe();
-      }
-    };
+    return () => subscription?.unsubscribe();
   }, [supabase]);
 
   // On logout: clear creator controls and turn off incognito (must re-enter code after reload/logout).
@@ -830,6 +824,7 @@ export default function ChatPage() {
         onClose={() => setShowSettings(false)}
         incognitoMode={incognitoMode}
         onIncognitoChange={setIncognitoMode}
+        user={user}
         temperature={temperature}
         onTemperatureChange={setTemperature}
         maxTokens={maxTokens}

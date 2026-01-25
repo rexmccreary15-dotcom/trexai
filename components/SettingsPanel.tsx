@@ -9,6 +9,7 @@ interface SettingsPanelProps {
   onClose: () => void;
   incognitoMode: boolean;
   onIncognitoChange: (value: boolean) => void;
+  user: { id: string; email?: string } | null;
   temperature: number;
   onTemperatureChange: (value: number) => void;
   maxTokens: number;
@@ -26,6 +27,7 @@ export default function SettingsPanel({
   onClose,
   incognitoMode,
   onIncognitoChange,
+  user,
   temperature,
   onTemperatureChange,
   maxTokens,
@@ -44,32 +46,8 @@ export default function SettingsPanel({
   const [backgroundImage, setBackgroundImage] = useState<string>("");
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [user, setUser] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = getSupabaseClient();
-
-  // Check if user is logged in
-  useEffect(() => {
-    if (!supabase) return;
-    
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
-    }).catch((err) => {
-      console.error('Error getting user:', err);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => {
-      if (subscription) {
-        subscription.unsubscribe();
-      }
-    };
-  }, [supabase]);
 
   // Load background preferences
   useEffect(() => {
@@ -83,12 +61,11 @@ export default function SettingsPanel({
     }
   }, []);
 
-  // Incognito: always require code. Reset on mount (reload/open settings) and when user changes.
+  // Incognito: always require code. Reset when user changes or on mount.
   useEffect(() => {
     setIsUnlocked(false);
     onIncognitoChange(false);
   }, [user]);
-
   useEffect(() => {
     setIsUnlocked(false);
     onIncognitoChange(false);

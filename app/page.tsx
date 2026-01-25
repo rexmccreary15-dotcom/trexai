@@ -27,18 +27,12 @@ export default function Home() {
 
   const loadChats = useCallback(async () => {
     if (!user) {
-      setChats(getChats());
+      setChats([]);
       return;
     }
     if (!supabase) return;
-    let session = (await supabase.auth.getSession()).data?.session;
-    const delays = [0, 80, 200];
-    for (let i = 0; i < delays.length; i++) {
-      if (i > 0) await new Promise((r) => setTimeout(r, delays[i]));
-      if (session?.access_token) break;
-      session = (await supabase.auth.getSession()).data?.session;
-    }
-    if (!session?.access_token) return; // never overwrite with [] when logged in
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return;
     try {
       const res = await fetch("/api/chats", {
         headers: { Authorization: `Bearer ${session.access_token}` },
@@ -50,33 +44,39 @@ export default function Home() {
     }
   }, [user, supabase]);
 
-  // Auth: use getSession() for initial state (reliable after nav). Clear chats only on explicit sign-out.
+  // Auth: getSession() for initial state. Only clear chats + set null on explicit SIGNED_OUT.
   useEffect(() => {
     if (!supabase) return;
 
     const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const u = session?.user ?? null;
-      setUser(u);
-      if (!u) {
-        localStorage.removeItem("ai-chat-history");
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const u = session?.user ?? null;
+        setUser(u);
+        if (!u) {
+          localStorage.removeItem("ai-chat-history");
+          setChats([]);
+        }
+      } catch (e) {
+        console.error("Auth init error:", e);
+        setUser(null);
         setChats([]);
       }
     };
     init();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      if (!currentUser) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") {
+        setUser(null);
         localStorage.removeItem("ai-chat-history");
         setChats([]);
+        return;
       }
+      const u = session?.user ?? null;
+      setUser(u);
     });
 
-    return () => {
-      subscription?.unsubscribe();
-    };
+    return () => subscription?.unsubscribe();
   }, [supabase]);
 
   // Load theme preference
