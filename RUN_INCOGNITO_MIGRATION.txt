@@ -1,0 +1,10 @@
+Run the incognito migration in Supabase (one-time).
+
+OPTION 1 - Copy/paste this into PowerShell to see the SQL and open Supabase:
+
+cd "c:\Users\Rexan\.cursor\cursor app"; Write-Host "`n=== SQL TO COPY ===" -ForegroundColor Cyan; Get-Content "add_incognito_unlocked.sql"; Write-Host "`n=== STEPS ===" -ForegroundColor Cyan; Write-Host "1. Go to: https://supabase.com/dashboard" -ForegroundColor Yellow; Write-Host "2. Select your project" -ForegroundColor Yellow; Write-Host "3. SQL Editor -> New query" -ForegroundColor Yellow; Write-Host "4. Paste the SQL above and click Run`n" -ForegroundColor Yellow; Start-Process "https://supabase.com/dashboard"
+
+OPTION 2 - Run the SQL manually:
+
+1. Open https://supabase.com/dashboard -> your project -> SQL Editor -> New query
+2. Paste and run the contents of add_incognito_unlocked.sql

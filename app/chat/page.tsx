@@ -154,10 +154,11 @@ export default function ChatPage() {
     };
   }, [supabase]);
 
-  // Additional safety check: if user is null, ensure creatorUnlocked is false
+  // Additional safety check: if user is null, ensure creatorUnlocked is false and incognito is off
   useEffect(() => {
     if (!user) {
       setCreatorUnlocked(false);
+      setIncognitoMode(false);
     }
   }, [user]);
 

@@ -83,28 +83,68 @@ export default function SettingsPanel({
     }
   }, []);
 
+  // Load incognito unlock from API when user is logged in; clear when not
   useEffect(() => {
-    const unlocked = localStorage.getItem("incognito-unlocked") === "true";
-    setIsUnlocked(unlocked);
-  }, []);
+    if (!supabase || !user) {
+      setIsUnlocked(false);
+      onIncognitoChange(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session || cancelled) return;
+        const res = await fetch("/api/incognito-controls", {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        if (!cancelled) setIsUnlocked(!!data.unlocked);
+      } catch {
+        if (!cancelled) setIsUnlocked(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user, supabase]);
 
   const handleCodeSubmit = async () => {
     const code = codeInput.trim().toLowerCase();
     
     if (code === "incog25") {
-      // Incognito mode still uses localStorage (no login required)
-      if (!isUnlocked) {
-        setIsUnlocked(true);
-        localStorage.setItem("incognito-unlocked", "true");
-        setCodeSuccess("✓ Incognito mode unlocked!");
+      if (!user) {
+        setCodeError("You must be logged in to unlock Incognito mode. Please log in first.");
+        setCodeSuccess("");
+        setCodeInput("");
+        return;
+      }
+      setIsSubmitting(true);
+      setCodeError("");
+      setCodeSuccess("");
+      try {
+        if (!supabase) throw new Error("Authentication service not available. Please refresh the page.");
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !session) throw new Error("Not logged in. Please log in first.");
+        const response = await fetch("/api/incognito-controls", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ code: "incog25" }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Failed to unlock Incognito mode");
+        setCodeSuccess(data.message || "✓ Incognito mode unlocked!");
         setCodeError("");
         setCodeInput("");
-        setTimeout(() => setCodeSuccess(""), 3000);
-      } else {
-        setCodeSuccess("✓ Incognito mode already unlocked!");
-        setCodeError("");
+        setTimeout(() => window.location.reload(), 1500);
+      } catch (err: any) {
+        setCodeError(err.message || "Failed to unlock Incognito mode. Please try again.");
+        setCodeSuccess("");
         setCodeInput("");
-        setTimeout(() => setCodeSuccess(""), 3000);
+      } finally {
+        setIsSubmitting(false);
       }
       return;
     }
@@ -275,7 +315,7 @@ export default function SettingsPanel({
               <div className="flex-1">
                 <label className="font-semibold">Enter Unlock Code</label>
                 <p className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
-                  Enter codes to unlock features. Note: Creator Controls require login.
+                  Enter codes to unlock features. Creator Controls and Incognito mode require login.
                 </p>
               </div>
             </div>
