@@ -280,9 +280,6 @@ export default function SettingsPanel({
               <Lock size={20} className={theme === "dark" ? "text-gray-400" : "text-gray-600"} />
               <div className="flex-1">
                 <label className="font-semibold">Enter Unlock Code</label>
-                <p className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
-                  Enter codes to unlock features. Creator Controls and Incognito require login. Incognito resets on logout—re-enter the code each time you log in.
-                </p>
               </div>
             </div>
             <div className="flex gap-2">

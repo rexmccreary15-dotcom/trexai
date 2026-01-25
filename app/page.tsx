@@ -27,21 +27,25 @@ export default function Home() {
   }, []);
 
   const loadChats = useCallback(async () => {
+    // Only load chats if user is logged in
+    if (!user) {
+      setChats([]);
+      return;
+    }
+    
     try {
-      // Try to load from database first (pass auth user ID if available)
-      const dbChats = await getChatsFromDB(user?.id);
+      // Load from database (user must be logged in)
+      const dbChats = await getChatsFromDB(user.id);
       if (dbChats && dbChats.length > 0) {
         setChats(dbChats);
       } else {
-        // Fallback to localStorage
-        setChats(getChats());
+        setChats([]);
       }
     } catch (error) {
-      console.error('Error loading chats, using localStorage:', error);
-      // Fallback to localStorage
-      setChats(getChats());
+      console.error('Error loading chats:', error);
+      setChats([]);
     }
-  }, [user?.id]);
+  }, [user]);
 
   // Check authentication status
   useEffect(() => {
@@ -57,11 +61,21 @@ export default function Home() {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        // Reload chats after login
-        loadChats();
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      // Clear chats when logged out, load chats when logged in
+      if (!currentUser) {
+        setChats([]);
+      } else {
+        // Load chats from database for logged-in user
+        try {
+          const dbChats = await getChatsFromDB(currentUser.id);
+          setChats(dbChats || []);
+        } catch (error) {
+          console.error('Error loading chats:', error);
+          setChats([]);
+        }
       }
     });
 
@@ -80,9 +94,14 @@ export default function Home() {
     }
   }, []);
 
+  // Only load chats if user is logged in
   useEffect(() => {
-    loadChats();
-  }, [loadChats]);
+    if (user) {
+      loadChats();
+    } else {
+      setChats([]);
+    }
+  }, [user, loadChats]);
 
   const handleDelete = (chatId: string, e: React.MouseEvent) => {
     e.preventDefault();
