@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Trash2, MessageSquare, LogIn, X } from "lucide-react";
 import { getChats, deleteChat, type Chat } from "@/lib/chatStorage";
 import { formatDistanceToNow } from "date-fns";
@@ -14,7 +14,6 @@ export default function Home() {
   const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
-  const authJustFetchedChatsRef = useRef(false);
   
   const supabase = getSupabaseClient();
 
@@ -28,37 +27,26 @@ export default function Home() {
 
   const loadChats = useCallback(async () => {
     if (!user) {
-      const localChats = getChats();
-      setChats(localChats);
+      setChats(getChats());
       return;
     }
-    // Auth callback just fetched on login – don't overwrite with getSession() race
-    if (authJustFetchedChatsRef.current) {
-      authJustFetchedChatsRef.current = false;
-      return;
+    if (!supabase) return;
+    let session = (await supabase.auth.getSession()).data?.session;
+    const delays = [0, 80, 200];
+    for (let i = 0; i < delays.length; i++) {
+      if (i > 0) await new Promise((r) => setTimeout(r, delays[i]));
+      if (session?.access_token) break;
+      session = (await supabase.auth.getSession()).data?.session;
     }
-    if (!supabase) {
-      setChats([]);
-      return;
-    }
+    if (!session?.access_token) return; // never overwrite with [] when logged in
     try {
-      let session = (await supabase.auth.getSession()).data?.session;
-      if (!session?.access_token) {
-        await new Promise((r) => setTimeout(r, 150));
-        session = (await supabase.auth.getSession()).data?.session;
-      }
-      if (!session?.access_token) {
-        setChats([]);
-        return;
-      }
       const res = await fetch("/api/chats", {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
       const data = await res.json().catch(() => ({}));
-      setChats(Array.isArray(data.chats) ? data.chats : []);
-    } catch (error) {
-      console.error("Error loading chats:", error);
-      setChats([]);
+      if (Array.isArray(data.chats)) setChats(data.chats);
+    } catch (e) {
+      console.error("Error loading chats:", e);
     }
   }, [user, supabase]);
 
@@ -82,31 +70,10 @@ export default function Home() {
       console.error('Error getting user:', err);
     });
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
-      // Load chats based on login status
-      if (!currentUser) {
-        setChats(getChats());
-      } else {
-        const token = session?.access_token;
-        if (!token) return;
-        authJustFetchedChatsRef.current = true;
-        try {
-          const res = await fetch("/api/chats", {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const data = await res.json().catch(() => ({}));
-          setChats(Array.isArray(data.chats) ? data.chats : []);
-        } catch (error) {
-          console.error("Error loading chats:", error);
-          setChats([]);
-          authJustFetchedChatsRef.current = false;
-        }
-      }
+      if (!currentUser) setChats(getChats());
     });
 
     return () => {
@@ -130,9 +97,24 @@ export default function Home() {
     loadChats();
   }, [loadChats]);
 
-  const handleDelete = (chatId: string, e: React.MouseEvent) => {
+  const handleDelete = async (chatId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (user) {
+      try {
+        const { data: { session } } = await supabase!.auth.getSession();
+        if (!session?.access_token) return;
+        const res = await fetch(`/api/chats/${encodeURIComponent(chatId)}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (!res.ok) return;
+        setChats((prev) => prev.filter((c) => c.id !== chatId));
+      } catch {
+        // ignore
+      }
+      return;
+    }
     deleteChat(chatId);
     setChats(getChats());
   };
@@ -159,7 +141,6 @@ export default function Home() {
   const handleAuthSuccess = () => {
     localStorage.setItem("has-visited-before", "true");
     setShowFirstTimeModal(false);
-    loadChats();
   };
 
   return (
