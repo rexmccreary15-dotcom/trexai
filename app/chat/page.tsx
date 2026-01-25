@@ -15,6 +15,7 @@ import AccountSettings from "@/components/AccountSettings";
 import CreatorControls from "@/components/CreatorControls";
 import { saveChat, getChatMessages } from "@/lib/chatStorage";
 import { getSessionId, getChatsFromDB, getChatMessagesFromDB } from "@/lib/db/chatStorage";
+import { useAuth } from "@/components/AuthProvider";
 import { getSupabaseClient } from "@/lib/supabase";
 
 interface Command {
@@ -45,14 +46,7 @@ export default function ChatPage() {
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [showCreatorControls, setShowCreatorControls] = useState(false);
   const [creatorUnlocked, setCreatorUnlocked] = useState(false);
-  
-  // Ensure creatorUnlocked is false on initial load if no user
-  useEffect(() => {
-    if (!user) {
-      setCreatorUnlocked(false);
-      setShowCreatorControls(false);
-    }
-  }, []); // Run once on mount
+  const { user } = useAuth();
   const [apiKeys, setApiKeys] = useState({ openai: "", gemini: "", claude: "" });
   const [codingMode, setCodingMode] = useState(false);
   const [temperature, setTemperature] = useState(0.7);
@@ -68,82 +62,40 @@ export default function ChatPage() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [background, setBackground] = useState<string>(""); // Custom background (image or color)
   const [transparentMessages, setTransparentMessages] = useState<boolean>(false);
-  const [user, setUser] = useState<any>(null); // Authenticated user
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = getSupabaseClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
-  // Auth: getSession() init; only clear on SIGNED_OUT. Load creator controls when logged in.
+  // Creator controls + incognito: when user logs out, reset. When logged in, fetch unlock status.
   useEffect(() => {
-    if (!supabase) return;
-
-    const load = async () => {
-      try {
-        let session = (await supabase.auth.getSession()).data?.session;
-        if (!session && typeof window !== "undefined") {
-          await new Promise((r) => setTimeout(r, 50));
-          session = (await supabase.auth.getSession()).data?.session;
-        }
-        const u = session?.user ?? null;
-        setUser(u);
-        setCreatorUnlocked(false);
-        if (u && session?.access_token) {
-          try {
-            const res = await fetch("/api/creator-controls", {
-              headers: { "Authorization": `Bearer ${session.access_token}` },
-            });
-            if (res.ok) {
-              const d = await res.json();
-              setCreatorUnlocked(!!d.unlocked);
-            }
-          } catch {
-            setCreatorUnlocked(false);
-          }
-        }
-      } catch (e) {
-        console.error("Auth load error:", e);
-        setUser(null);
-        setCreatorUnlocked(false);
-      }
-    };
-    load();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_OUT") {
-        setUser(null);
-        setCreatorUnlocked(false);
-        setIncognitoMode(false);
-        return;
-      }
-      // Never overwrite user with null except on SIGNED_OUT (avoids spurious null events on nav/token refresh)
-      if (!session?.user) return;
-      setUser(session.user);
+    if (!user) {
       setCreatorUnlocked(false);
+      setShowCreatorControls(false);
+      setIncognitoMode(false);
+      return;
+    }
+    if (!supabase) return;
+    let cancelled = false;
+    (async () => {
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (cancelled || !session?.access_token) return;
         const res = await fetch("/api/creator-controls", {
-          headers: { "Authorization": `Bearer ${session.access_token}` },
+          headers: { Authorization: `Bearer ${session.access_token}` },
         });
+        if (cancelled) return;
         if (res.ok) {
           const d = await res.json();
           setCreatorUnlocked(!!d.unlocked);
         }
       } catch {
-        setCreatorUnlocked(false);
+        if (!cancelled) setCreatorUnlocked(false);
       }
-    });
-
-    return () => subscription?.unsubscribe();
-  }, [supabase]);
-
-  // On logout: clear creator controls and turn off incognito (must re-enter code after reload/logout).
-  useEffect(() => {
-    if (!user) {
-      setCreatorUnlocked(false);
-      setIncognitoMode(false);
-    }
-  }, [user]);
+    })();
+    return () => { cancelled = true; };
+  }, [user, supabase]);
 
   // Load commands from localStorage
   useEffect(() => {
