@@ -17,11 +17,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Suspense fallback={<div className="p-4 text-center text-gray-400">Loading...</div>}>
-          <AuthProvider>
+        <AuthProvider>
+          <Suspense fallback={<div className="p-4 text-center text-gray-400">Loading...</div>}>
             <HeartbeatProvider>{children}</HeartbeatProvider>
-          </AuthProvider>
-        </Suspense>
+          </Suspense>
+        </AuthProvider>
       </body>
     </html>
   );

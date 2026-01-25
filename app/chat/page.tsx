@@ -427,35 +427,29 @@ export default function ChatPage() {
         hasImage: !!imageData
       });
 
-      // Get session ID for analytics tracking
       const sessionId = getSessionId();
-      console.log("=== FRONTEND: About to send message ===");
-      console.log("Session ID:", sessionId || "MISSING - Analytics won't work!");
-      console.log("Chat ID:", chatId || "MISSING!");
-      console.log("Incognito mode:", incognitoMode);
-      
-      // Get auth user info - try from context first, fallback to session
       let authUserId: string | null = null;
       let authUserEmail: string | null = null;
-      if (user) {
-        authUserId = user.id || null;
-        authUserEmail = user.email || null;
-      } else if (supabase) {
-        // Fallback: get from session directly if context user is null
+      let bearerToken: string | null = null;
+      if (supabase) {
         try {
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user) {
             authUserId = session.user.id;
-            authUserEmail = session.user.email || null;
+            authUserEmail = session.user.email ?? null;
+            if (session.access_token) bearerToken = session.access_token;
           }
         } catch (e) {
-          console.error("Failed to get session for chat save:", e);
+          console.error("Failed to get session for chat:", e);
         }
       }
 
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (bearerToken) headers["Authorization"] = `Bearer ${bearerToken}`;
+
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           messages: messagesToSend,
           model: selectedAI,

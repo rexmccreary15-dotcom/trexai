@@ -63,8 +63,26 @@ export async function POST(request: NextRequest) {
       authUserEmail
     } = await request.json();
 
+    // Prefer verified user from Bearer token (server-side) over body (client can be wrong)
+    let verifiedAuthUserId: string | null = (authUserId && typeof authUserId === 'string') ? authUserId : null;
+    let verifiedAuthUserEmail: string | null = (authUserEmail && typeof authUserEmail === 'string') ? authUserEmail : null;
+    const authHeader = request.headers.get("authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      try {
+        const token = authHeader.replace("Bearer ", "").trim();
+        const adminClient = createSupabaseAdmin();
+        const { data: { user: tokenUser }, error } = await adminClient.auth.getUser(token);
+        if (!error && tokenUser) {
+          verifiedAuthUserId = tokenUser.id;
+          verifiedAuthUserEmail = tokenUser.email ?? null;
+        }
+      } catch (e) {
+        console.error("Chat API: token verification failed", e);
+      }
+    }
+
     console.log("=== API REQUEST START ===");
-    console.log("API received - sessionId:", sessionId || "MISSING!", "chatId:", chatId || "MISSING!", "incognito:", incognito);
+    console.log("API received - sessionId:", sessionId || "MISSING!", "chatId:", chatId || "MISSING!", "incognito:", incognito, "authUserId:", verifiedAuthUserId || "MISSING");
     console.log("=== API REQUEST START ===");
 
     // Track analytics and get user ID - MUST happen BEFORE processing the message
@@ -75,7 +93,7 @@ export async function POST(request: NextRequest) {
         console.log("Session ID:", sessionId);
         console.log("Incognito mode:", incognito);
         
-        userId = await getOrCreateUser(sessionId, authUserId, authUserEmail);
+        userId = await getOrCreateUser(sessionId, verifiedAuthUserId ?? undefined, verifiedAuthUserEmail ?? undefined);
         console.log("User ID:", userId || "NULL - User creation failed!");
         
         if (!userId) {
@@ -261,7 +279,7 @@ export async function POST(request: NextRequest) {
         codingMode
       );
       
-      await saveChatAfterResponse(chatId, messages, model, incognito, sessionId, authUserId ?? null, authUserEmail ?? null, response);
+      await saveChatAfterResponse(chatId, messages, model, incognito, sessionId, verifiedAuthUserId, verifiedAuthUserEmail, response);
       
       return NextResponse.json({
         message: response,
@@ -347,7 +365,7 @@ export async function POST(request: NextRequest) {
 
         const responseText = completion.choices[0]?.message?.content || "No response";
         
-        await saveChatAfterResponse(chatId, messages, model, incognito, sessionId, authUserId ?? null, authUserEmail ?? null, responseText);
+        await saveChatAfterResponse(chatId, messages, model, incognito, sessionId, verifiedAuthUserId, verifiedAuthUserEmail, responseText);
         
         return NextResponse.json({
           message: responseText,
@@ -542,7 +560,7 @@ export async function POST(request: NextRequest) {
 
         const responseText = text || "No response";
         
-        await saveChatAfterResponse(chatId, messages, model, incognito, sessionId, authUserId ?? null, authUserEmail ?? null, responseText);
+        await saveChatAfterResponse(chatId, messages, model, incognito, sessionId, verifiedAuthUserId, verifiedAuthUserEmail, responseText);
         
         return NextResponse.json({
           message: responseText,
@@ -649,7 +667,7 @@ export async function POST(request: NextRequest) {
 
         const responseText = text;
         
-        await saveChatAfterResponse(chatId, messages, model, incognito, sessionId, authUserId ?? null, authUserEmail ?? null, responseText);
+        await saveChatAfterResponse(chatId, messages, model, incognito, sessionId, verifiedAuthUserId, verifiedAuthUserEmail, responseText);
         
         return NextResponse.json({
           message: responseText,

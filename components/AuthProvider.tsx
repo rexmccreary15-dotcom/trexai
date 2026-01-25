@@ -36,13 +36,10 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         }
         const u = session?.user ?? null;
         setUser(u);
-        if (!u) {
-          localStorage.removeItem("ai-chat-history");
-        }
+        // Do NOT clear localStorage here—only on SIGNED_OUT. Avoids wiping due to slow/racy init.
       } catch (e) {
         console.error("Auth init error:", e);
         setUser(null);
-        localStorage.removeItem("ai-chat-history");
       }
     };
     init();
