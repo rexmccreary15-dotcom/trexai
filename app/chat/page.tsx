@@ -526,10 +526,19 @@ export default function ChatPage() {
         const updatedMessages = [...messages, userMessage, errorMessage];
         setMessages(updatedMessages);
 
-        // Save chat history (if not incognito) - database save happens in API route
-        // Also save to localStorage as backup
+        // Save chat history (if not incognito)
         if (!incognitoMode) {
-          saveChat(chatId, updatedMessages, selectedAI, incognitoMode);
+          if (user) {
+            // Logged in: save to database (persistent across devices)
+            try {
+              await saveChatToDB(chatId, updatedMessages, selectedAI, incognitoMode, user.id);
+            } catch (error) {
+              console.error('Error saving to database:', error);
+            }
+          } else {
+            // Logged out: save to localStorage only (temporary, cleared on reload)
+            saveChat(chatId, updatedMessages, selectedAI, incognitoMode);
+          }
         }
       } else {
         const assistantMessage: Message = { role: "assistant", content: data.message };
@@ -538,14 +547,17 @@ export default function ChatPage() {
 
         // Save chat history (if not incognito)
         if (!incognitoMode) {
-          // Save to database
-          try {
-            await saveChatToDB(chatId, updatedMessages, selectedAI, incognitoMode, user?.id);
-          } catch (error) {
-            console.error('Error saving to database:', error);
+          if (user) {
+            // Logged in: save to database (persistent across devices)
+            try {
+              await saveChatToDB(chatId, updatedMessages, selectedAI, incognitoMode, user.id);
+            } catch (error) {
+              console.error('Error saving to database:', error);
+            }
+          } else {
+            // Logged out: save to localStorage only (temporary, cleared on reload)
+            saveChat(chatId, updatedMessages, selectedAI, incognitoMode);
           }
-          // Also save to localStorage as backup
-          saveChat(chatId, updatedMessages, selectedAI, incognitoMode);
         }
       }
     } catch (error) {

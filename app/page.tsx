@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Trash2, MessageSquare, LogIn, X } from "lucide-react";
 import { getChats, deleteChat, type Chat } from "@/lib/chatStorage";
 import { getChatsFromDB } from "@/lib/db/chatStorage";
@@ -27,20 +27,18 @@ export default function Home() {
   }, []);
 
   const loadChats = useCallback(async () => {
-    // Only load chats if user is logged in
     if (!user) {
-      setChats([]);
+      // When logged out: load from localStorage (temporary)
+      // Chats are cleared on page reload, but persist during the session
+      const localChats = getChats();
+      setChats(localChats);
       return;
     }
     
+    // When logged in: load from database (persistent across devices)
     try {
-      // Load from database (user must be logged in)
       const dbChats = await getChatsFromDB(user.id);
-      if (dbChats && dbChats.length > 0) {
-        setChats(dbChats);
-      } else {
-        setChats([]);
-      }
+      setChats(dbChats || []);
     } catch (error) {
       console.error('Error loading chats:', error);
       setChats([]);
@@ -54,6 +52,15 @@ export default function Home() {
     // Get current user
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
+      // On page reload: if logged out, clear localStorage chats (they disappear on reload)
+      if (!user) {
+        // Check if this is a page reload (not SPA navigation)
+        const navEntry = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
+        if (navEntry && navEntry.type === 'reload') {
+          // Only clear on actual page reload, not on client-side navigation
+          localStorage.removeItem("ai-chat-history");
+        }
+      }
     }).catch((err) => {
       console.error('Error getting user:', err);
     });
@@ -64,11 +71,12 @@ export default function Home() {
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
-      // Clear chats when logged out, load chats when logged in
+      // Load chats based on login status
       if (!currentUser) {
-        setChats([]);
+        // Logged out: show localStorage chats (temporary, cleared on reload)
+        setChats(getChats());
       } else {
-        // Load chats from database for logged-in user
+        // Logged in: load from database (persistent)
         try {
           const dbChats = await getChatsFromDB(currentUser.id);
           setChats(dbChats || []);
@@ -94,14 +102,11 @@ export default function Home() {
     }
   }, []);
 
-  // Only load chats if user is logged in
+  
+  // Load chats when user changes
   useEffect(() => {
-    if (user) {
-      loadChats();
-    } else {
-      setChats([]);
-    }
-  }, [user, loadChats]);
+    loadChats();
+  }, [loadChats]);
 
   const handleDelete = (chatId: string, e: React.MouseEvent) => {
     e.preventDefault();
