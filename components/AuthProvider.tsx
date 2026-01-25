@@ -5,7 +5,7 @@ import { getSupabaseClient } from "@/lib/supabase";
 
 type User = { id: string; email?: string } | null;
 
-const AuthContext = createContext<{ user: User }>({ user: null });
+const AuthContext = createContext<{ user: User; loading: boolean }>({ user: null, loading: true });
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
@@ -15,10 +15,14 @@ export function useAuth() {
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User>(null);
+  const [loading, setLoading] = useState(true);
   const supabase = getSupabaseClient();
 
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
 
     const init = async () => {
       try {
@@ -36,6 +40,8 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         console.error("Auth init error:", e);
         setUser(null);
         localStorage.removeItem("ai-chat-history");
+      } finally {
+        setLoading(false);
       }
     };
     init();
@@ -53,7 +59,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   }, [supabase]);
 
   return (
-    <AuthContext.Provider value={{ user }}>
+    <AuthContext.Provider value={{ user, loading }}>
       {children}
     </AuthContext.Provider>
   );

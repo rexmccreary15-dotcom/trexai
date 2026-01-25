@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import { Trash2, MessageSquare, LogIn, X } from "lucide-react";
 import { getChats, deleteChat, type Chat } from "@/lib/chatStorage";
@@ -10,7 +11,8 @@ import { useAuth } from "@/components/AuthProvider";
 import { getSupabaseClient } from "@/lib/supabase";
 
 export default function Home() {
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, loading } = useAuth();
   const [chats, setChats] = useState<Chat[]>([]);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
@@ -84,7 +86,7 @@ export default function Home() {
       return;
     }
     localStorage.setItem("has-visited-before", "true");
-    window.location.href = `/chat?new=${Date.now()}`;
+    router.push(`/chat?new=${Date.now()}`);
   };
 
   const handleSkipLogin = () => {
@@ -109,7 +111,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#0f172a] text-white">
       <div className="absolute top-4 left-4">
-        {!user && (
+        {!loading && !user && (
           <button
             onClick={() => setShowAuthModal(true)}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
@@ -118,7 +120,7 @@ export default function Home() {
             Log In
           </button>
         )}
-        {user && (
+        {!loading && user && (
           <div className="flex items-center gap-2 bg-gray-800 px-4 py-2 rounded-lg">
             <span className="text-sm">{user.email}</span>
             <button
