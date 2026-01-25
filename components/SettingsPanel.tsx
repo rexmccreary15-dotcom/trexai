@@ -123,6 +123,11 @@ export default function SettingsPanel({
       setCodeSuccess("");
 
       try {
+        // Check if supabase client is available
+        if (!supabase) {
+          throw new Error("Authentication service not available. Please refresh the page.");
+        }
+
         // Get the session token
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError || !session) {
