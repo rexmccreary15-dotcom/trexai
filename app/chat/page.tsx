@@ -14,7 +14,7 @@ import FeedbackPanel from "@/components/FeedbackPanel";
 import AccountSettings from "@/components/AccountSettings";
 import CreatorControls from "@/components/CreatorControls";
 import { saveChat, getChatMessages } from "@/lib/chatStorage";
-import { getSessionId, getChatsFromDB, getChatMessagesFromDB, saveChatToDB } from "@/lib/db/chatStorage";
+import { getSessionId, getChatsFromDB, getChatMessagesFromDB } from "@/lib/db/chatStorage";
 import { getSupabaseClient } from "@/lib/supabase";
 
 interface Command {
@@ -529,12 +529,8 @@ export default function ChatPage() {
         // Save chat history (if not incognito)
         if (!incognitoMode) {
           if (user) {
-            // Logged in: save to database (persistent across devices)
-            try {
-              await saveChatToDB(chatId, updatedMessages, selectedAI, incognitoMode, user.id);
-            } catch (error) {
-              console.error('Error saving to database:', error);
-            }
+            // Logged in: API already saved to DB; optionally keep localStorage in sync for same-tab UX
+            saveChat(chatId, updatedMessages, selectedAI, incognitoMode);
           } else {
             // Logged out: save to localStorage only (temporary, cleared on reload)
             saveChat(chatId, updatedMessages, selectedAI, incognitoMode);
@@ -548,12 +544,8 @@ export default function ChatPage() {
         // Save chat history (if not incognito)
         if (!incognitoMode) {
           if (user) {
-            // Logged in: save to database (persistent across devices)
-            try {
-              await saveChatToDB(chatId, updatedMessages, selectedAI, incognitoMode, user.id);
-            } catch (error) {
-              console.error('Error saving to database:', error);
-            }
+            // Logged in: API already saved to DB; optionally keep localStorage in sync for same-tab UX
+            saveChat(chatId, updatedMessages, selectedAI, incognitoMode);
           } else {
             // Logged out: save to localStorage only (temporary, cleared on reload)
             saveChat(chatId, updatedMessages, selectedAI, incognitoMode);

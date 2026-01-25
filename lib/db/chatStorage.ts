@@ -124,24 +124,28 @@ export async function getOrCreateUser(sessionId: string, authUserId?: string, au
 }
 
 // Save chat to database
+// When called from API (server): pass sessionIdOverride and optionally authUserEmail.
+// When called from client: omit them (uses getSessionId); client-side save often fails due to no service role key.
 export async function saveChatToDB(
   chatId: string,
   messages: any[],
   aiModel: string,
   incognito: boolean = false,
-  authUserId?: string
+  authUserId?: string,
+  sessionIdOverride?: string,
+  authUserEmail?: string
 ): Promise<string> {
   if (incognito) return chatId; // Don't save incognito chats
 
   try {
     const adminClient = createSupabaseAdmin();
-    const sessionId = getSessionId();
-    if (!sessionId) {
-      console.error('No session ID available');
+    const sessionId = sessionIdOverride ?? (typeof window !== 'undefined' ? getSessionId() : '');
+    if (!sessionId && !authUserId) {
+      console.error('No session ID or auth user ID available');
       return chatId;
     }
 
-    const userId = await getOrCreateUser(sessionId, authUserId);
+    const userId = await getOrCreateUser(sessionId, authUserId, authUserEmail);
     if (!userId) {
       console.error('Failed to get/create user');
       return chatId;

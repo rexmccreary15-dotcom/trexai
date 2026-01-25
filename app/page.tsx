@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Trash2, MessageSquare, LogIn, X } from "lucide-react";
 import { getChats, deleteChat, type Chat } from "@/lib/chatStorage";
-import { getChatsFromDB } from "@/lib/db/chatStorage";
 import { formatDistanceToNow } from "date-fns";
 import AuthModal from "@/components/AuthModal";
 import { getSupabaseClient } from "@/lib/supabase";
@@ -29,21 +28,31 @@ export default function Home() {
   const loadChats = useCallback(async () => {
     if (!user) {
       // When logged out: load from localStorage (temporary)
-      // Chats are cleared on page reload, but persist during the session
       const localChats = getChats();
       setChats(localChats);
       return;
     }
-    
-    // When logged in: load from database (persistent across devices)
+    // When logged in: fetch from API (server-side DB, persistent across devices)
+    if (!supabase) {
+      setChats([]);
+      return;
+    }
     try {
-      const dbChats = await getChatsFromDB(user.id);
-      setChats(dbChats || []);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setChats([]);
+        return;
+      }
+      const res = await fetch("/api/chats", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      setChats(Array.isArray(data.chats) ? data.chats : []);
     } catch (error) {
-      console.error('Error loading chats:', error);
+      console.error("Error loading chats:", error);
       setChats([]);
     }
-  }, [user]);
+  }, [user, supabase]);
 
   // Check authentication status
   useEffect(() => {
@@ -73,15 +82,21 @@ export default function Home() {
       setUser(currentUser);
       // Load chats based on login status
       if (!currentUser) {
-        // Logged out: show localStorage chats (temporary, cleared on reload)
         setChats(getChats());
       } else {
-        // Logged in: load from database (persistent)
         try {
-          const dbChats = await getChatsFromDB(currentUser.id);
-          setChats(dbChats || []);
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            const res = await fetch("/api/chats", {
+              headers: { Authorization: `Bearer ${session.access_token}` },
+            });
+            const data = await res.json().catch(() => ({}));
+            setChats(Array.isArray(data.chats) ? data.chats : []);
+          } else {
+            setChats([]);
+          }
         } catch (error) {
-          console.error('Error loading chats:', error);
+          console.error("Error loading chats:", error);
           setChats([]);
         }
       }
@@ -92,7 +107,7 @@ export default function Home() {
         subscription.unsubscribe();
       }
     };
-  }, [loadChats]);
+  }, [supabase]);
 
   // Load theme preference
   useEffect(() => {

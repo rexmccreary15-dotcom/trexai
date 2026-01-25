@@ -21,6 +21,27 @@ function getLengthInstruction(maxTokens: number): string {
   }
 }
 
+// Save chat to DB on server (called after each successful AI response)
+async function saveChatAfterResponse(
+  chatId: string,
+  messages: any[],
+  model: string,
+  incognito: boolean,
+  sessionId: string | null,
+  authUserId: string | null,
+  authUserEmail: string | null,
+  response: string
+): Promise<void> {
+  if (incognito || !chatId || (!sessionId && !authUserId)) return;
+  const clean = (m: any) => ({ role: m.role, content: typeof m.content === 'string' ? m.content : (m.content?.[0]?.text ?? '') });
+  const fullMessages = [...messages.map(clean), { role: 'assistant' as const, content: response }];
+  try {
+    await saveChatToDB(chatId, fullMessages, model, incognito, authUserId ?? undefined, sessionId ?? undefined, authUserEmail ?? undefined);
+  } catch (e) {
+    console.error('Failed to save chat after response:', e);
+  }
+}
+
 // MyAI is now the default free AI - see lib/myai.ts
 
 export async function POST(request: NextRequest) {
@@ -239,8 +260,7 @@ export async function POST(request: NextRequest) {
         codingMode
       );
       
-      // Save chat to database if not incognito (happens after response)
-      // Note: We'll save it in the chat page after receiving the response
+      await saveChatAfterResponse(chatId, messages, model, incognito, sessionId, authUserId ?? null, authUserEmail ?? null, response);
       
       return NextResponse.json({
         message: response,
@@ -326,7 +346,7 @@ export async function POST(request: NextRequest) {
 
         const responseText = completion.choices[0]?.message?.content || "No response";
         
-        // Chat will be saved in the frontend after receiving response
+        await saveChatAfterResponse(chatId, messages, model, incognito, sessionId, authUserId ?? null, authUserEmail ?? null, responseText);
         
         return NextResponse.json({
           message: responseText,
@@ -521,7 +541,7 @@ export async function POST(request: NextRequest) {
 
         const responseText = text || "No response";
         
-        // Chat will be saved in the frontend after receiving response
+        await saveChatAfterResponse(chatId, messages, model, incognito, sessionId, authUserId ?? null, authUserEmail ?? null, responseText);
         
         return NextResponse.json({
           message: responseText,
@@ -628,7 +648,7 @@ export async function POST(request: NextRequest) {
 
         const responseText = text;
         
-        // Chat will be saved in the frontend after receiving response
+        await saveChatAfterResponse(chatId, messages, model, incognito, sessionId, authUserId ?? null, authUserEmail ?? null, responseText);
         
         return NextResponse.json({
           message: responseText,
