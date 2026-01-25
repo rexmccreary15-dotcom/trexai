@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Trash2, MessageSquare, LogIn, X } from "lucide-react";
 import { getChats, deleteChat, type Chat } from "@/lib/chatStorage";
 import { formatDistanceToNow } from "date-fns";
@@ -14,6 +14,7 @@ export default function Home() {
   const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const authJustFetchedChatsRef = useRef(false);
   
   const supabase = getSupabaseClient();
 
@@ -27,18 +28,25 @@ export default function Home() {
 
   const loadChats = useCallback(async () => {
     if (!user) {
-      // When logged out: load from localStorage (temporary)
       const localChats = getChats();
       setChats(localChats);
       return;
     }
-    // When logged in: fetch from API (server-side DB, persistent across devices)
+    // Auth callback just fetched on login – don't overwrite with getSession() race
+    if (authJustFetchedChatsRef.current) {
+      authJustFetchedChatsRef.current = false;
+      return;
+    }
     if (!supabase) {
       setChats([]);
       return;
     }
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      let session = (await supabase.auth.getSession()).data?.session;
+      if (!session?.access_token) {
+        await new Promise((r) => setTimeout(r, 150));
+        session = (await supabase.auth.getSession()).data?.session;
+      }
       if (!session?.access_token) {
         setChats([]);
         return;
@@ -84,20 +92,19 @@ export default function Home() {
       if (!currentUser) {
         setChats(getChats());
       } else {
+        const token = session?.access_token;
+        if (!token) return;
+        authJustFetchedChatsRef.current = true;
         try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.access_token) {
-            const res = await fetch("/api/chats", {
-              headers: { Authorization: `Bearer ${session.access_token}` },
-            });
-            const data = await res.json().catch(() => ({}));
-            setChats(Array.isArray(data.chats) ? data.chats : []);
-          } else {
-            setChats([]);
-          }
+          const res = await fetch("/api/chats", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const data = await res.json().catch(() => ({}));
+          setChats(Array.isArray(data.chats) ? data.chats : []);
         } catch (error) {
           console.error("Error loading chats:", error);
           setChats([]);
+          authJustFetchedChatsRef.current = false;
         }
       }
     });
