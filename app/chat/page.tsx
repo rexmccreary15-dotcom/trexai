@@ -75,45 +75,31 @@ export default function ChatPage() {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
-  // Check authentication status and load creator controls unlock status
+  // Auth: use getSession() for initial state (reliable after nav). Load creator controls if logged in.
   useEffect(() => {
     if (!supabase) return;
-    
-    const loadUserAndCreatorControls = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      
-      // IMPORTANT: Always clear creatorUnlocked first, then set it if user is logged in
+
+    const load = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const u = session?.user ?? null;
+      setUser(u);
       setCreatorUnlocked(false);
-      
-      // If user is logged in, check creator controls unlock status from database
-      if (user) {
+      if (u) {
         try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            const response = await fetch("/api/creator-controls", {
-              headers: {
-                "Authorization": `Bearer ${session.access_token}`,
-              },
-            });
-            
-            if (response.ok) {
-              const data = await response.json();
-              setCreatorUnlocked(data.unlocked || false);
-            } else {
-              setCreatorUnlocked(false);
-            }
-          } else {
-            setCreatorUnlocked(false);
+          const res = await fetch("/api/creator-controls", {
+            headers: { "Authorization": `Bearer ${session!.access_token}` },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setCreatorUnlocked(!!data.unlocked);
           }
-        } catch (error) {
-          console.error("Error loading creator controls status:", error);
+        } catch {
           setCreatorUnlocked(false);
         }
       }
     };
 
-    loadUserAndCreatorControls();
+    load();
 
     const {
       data: { subscription },
@@ -154,10 +140,11 @@ export default function ChatPage() {
     };
   }, [supabase]);
 
-  // When logged out: only clear creator controls. Incognito can stay on.
+  // On logout: clear creator controls and turn off incognito (must re-enter code after reload/logout).
   useEffect(() => {
     if (!user) {
       setCreatorUnlocked(false);
+      setIncognitoMode(false);
     }
   }, [user]);
 

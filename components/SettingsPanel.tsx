@@ -83,27 +83,23 @@ export default function SettingsPanel({
     }
   }, []);
 
-  // Incognito: when logged out, always "unlocked" (no code). When logged in, require code each session.
+  // Incognito: always require code. Reset on mount (reload/open settings) and when user changes.
   useEffect(() => {
-    if (!user) {
-      setIsUnlocked(true);
-      return;
-    }
     setIsUnlocked(false);
     onIncognitoChange(false);
   }, [user]);
+
+  useEffect(() => {
+    setIsUnlocked(false);
+    onIncognitoChange(false);
+  }, []);
 
   const handleCodeSubmit = async () => {
     const code = codeInput.trim().toLowerCase();
     
     if (code === "incog25") {
-      // Logged in: unlock incognito for this session. Logged out: incognito already available.
-      if (user) {
-        setIsUnlocked(true);
-        setCodeSuccess("✓ Incognito mode unlocked!");
-      } else {
-        setCodeSuccess("✓ Incognito is already available when logged out.");
-      }
+      setIsUnlocked(true);
+      setCodeSuccess("✓ Incognito mode unlocked!");
       setCodeError("");
       setCodeInput("");
       setTimeout(() => setCodeSuccess(""), 3000);

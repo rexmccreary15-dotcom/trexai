@@ -1,6 +1,6 @@
 "use client";
 
-import { X, BarChart3, Palette, Shield, Settings, Users, Download, Zap, Key, ToggleLeft, FileText } from "lucide-react";
+import { X, BarChart3, Palette, Shield, Settings, Users, Download, Zap, Key, ToggleLeft, FileText, Search } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
 
 interface CreatorControlsProps {
@@ -20,6 +20,8 @@ export default function CreatorControls({
   const [users, setUsers] = useState<any[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [userDetailsLoading, setUserDetailsLoading] = useState(false);
+  const [chatSearch, setChatSearch] = useState("");
   const [usersPage, setUsersPage] = useState(1);
   const [usersTotal, setUsersTotal] = useState(0);
   const [brandingSettings, setBrandingSettings] = useState<any>({});
@@ -153,12 +155,18 @@ export default function CreatorControls({
   }, [isOpen, activeTab]);
 
   const fetchUserDetails = async (userId: string) => {
+    setSelectedUser({ id: userId });
+    setUserDetailsLoading(true);
+    setChatSearch("");
     try {
       const response = await fetch(`/api/users/${userId}`);
       const data = await response.json();
       setSelectedUser(data);
     } catch (error) {
       console.error("Error fetching user details:", error);
+      setSelectedUser(null);
+    } finally {
+      setUserDetailsLoading(false);
     }
   };
 
@@ -597,9 +605,15 @@ export default function CreatorControls({
                               <td className="p-2">
                                 {user.is_banned ? (
                                   <span className="text-red-500">Banned</span>
-                                ) : (
-                                  <span className="text-green-500">Active</span>
-                                )}
+                                ) : (() => {
+                                  const hb = user.last_heartbeat ? new Date(user.last_heartbeat).getTime() : 0;
+                                  const active = hb && (Date.now() - hb) < 90_000;
+                                  return active ? (
+                                    <span className="text-green-500">Active</span>
+                                  ) : (
+                                    <span className="text-amber-500">Inactive</span>
+                                  );
+                                })()}
                               </td>
                               <td className="p-2">
                                 <div className="flex gap-2">
@@ -662,37 +676,80 @@ export default function CreatorControls({
                         <div className="flex items-center justify-between mb-4">
                           <h4 className="font-semibold">User Details</h4>
                           <button
-                            onClick={() => setSelectedUser(null)}
+                            onClick={() => { setSelectedUser(null); setChatSearch(""); }}
                             className="text-gray-400 hover:text-gray-600"
                           >
                             ×
                           </button>
                         </div>
-                        <div className="space-y-2 text-sm">
-                          <p><strong>ID:</strong> <span className="font-mono text-xs">{selectedUser.id}</span></p>
-                          <p><strong>Session ID:</strong> <span className="font-mono text-xs">{selectedUser.session_id}</span></p>
-                          <p><strong>Email:</strong> {selectedUser.email || "Not set"}</p>
-                          <p><strong>Messages:</strong> {selectedUser.message_count || 0}</p>
-                          <p><strong>Created:</strong> {new Date(selectedUser.created_at).toLocaleString()}</p>
-                          <p><strong>Last Active:</strong> {new Date(selectedUser.last_active).toLocaleString()}</p>
-                          {selectedUser.is_banned && (
-                            <p><strong>Ban Reason:</strong> {selectedUser.ban_reason || "No reason provided"}</p>
-                          )}
-                        </div>
-                        {selectedUser.chats && selectedUser.chats.length > 0 && (
-                          <div className="mt-4">
-                            <h5 className="font-semibold mb-2">User&apos;s Chats ({selectedUser.chats.length})</h5>
-                            <div className="space-y-2 max-h-60 overflow-y-auto">
-                              {selectedUser.chats.map((chat: any) => (
-                                <div key={chat.id} className={`p-2 rounded ${themeClasses.bg} border ${themeClasses.border}`}>
-                                  <p className="font-medium">{chat.title || "Untitled Chat"}</p>
-                                  <p className={`text-xs ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
-                                    {chat.message_count} messages • {new Date(chat.updated_at).toLocaleDateString()}
-                                  </p>
-                                </div>
-                              ))}
+                        {userDetailsLoading ? (
+                          <p className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>Loading...</p>
+                        ) : selectedUser.error ? (
+                          <p className="text-sm text-red-500">{selectedUser.error}</p>
+                        ) : (
+                          <>
+                            <div className="space-y-2 text-sm">
+                              <p><strong>ID:</strong> <span className="font-mono text-xs">{selectedUser.id}</span></p>
+                              <p><strong>Session ID:</strong> <span className="font-mono text-xs">{selectedUser.session_id || "—"}</span></p>
+                              <p><strong>Email:</strong> {selectedUser.email || "—"}</p>
+                              <p><strong>Messages:</strong> {selectedUser.message_count || 0}</p>
+                              <p><strong>Created:</strong> {selectedUser.created_at ? new Date(selectedUser.created_at).toLocaleString() : "—"}</p>
+                              <p><strong>Last Active:</strong> {selectedUser.last_active ? new Date(selectedUser.last_active).toLocaleString() : "—"}</p>
+                              {selectedUser.is_banned && (
+                                <p><strong>Ban Reason:</strong> {selectedUser.ban_reason || "No reason provided"}</p>
+                              )}
                             </div>
-                          </div>
+                            {selectedUser.chats && selectedUser.chats.length > 0 && (
+                              <div className="mt-4">
+                                <h5 className="font-semibold mb-2">Chat History</h5>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Search size={16} className={theme === "dark" ? "text-gray-400" : "text-gray-600"} />
+                                  <input
+                                    type="text"
+                                    placeholder="Search by keyword (e.g. hi, hello)..."
+                                    value={chatSearch}
+                                    onChange={(e) => setChatSearch(e.target.value)}
+                                    className={`flex-1 px-2 py-1.5 rounded text-sm border ${themeClasses.input}`}
+                                  />
+                                </div>
+                                {(() => {
+                                  const q = chatSearch.trim().toLowerCase();
+                                  const all: { chat: any; msg: any }[] = [];
+                                  for (const chat of selectedUser.chats) {
+                                    const msgs = (chat.messages || []).filter((m: any) => m.role === "user");
+                                    for (const msg of msgs) {
+                                      if (!q || (msg.content && String(msg.content).toLowerCase().includes(q))) {
+                                        all.push({ chat, msg });
+                                      }
+                                    }
+                                  }
+                                  const byTime = [...all].sort((a, b) => {
+                                    const tA = a.msg.created_at ? new Date(a.msg.created_at).getTime() : 0;
+                                    const tB = b.msg.created_at ? new Date(b.msg.created_at).getTime() : 0;
+                                    return tA - tB;
+                                  });
+                                  return (
+                                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                                      {byTime.length === 0 ? (
+                                        <p className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
+                                          {q ? "No messages match your search." : "No user messages in chats."}
+                                        </p>
+                                      ) : (
+                                        byTime.map(({ chat, msg }, i) => (
+                                          <div key={i} className={`p-2 rounded ${themeClasses.bg} border ${themeClasses.border}`}>
+                                            <p className={`text-xs ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
+                                              {msg.created_at ? new Date(msg.created_at).toLocaleString() : "—"} • {chat.title || "Untitled Chat"}
+                                            </p>
+                                            <p className="text-sm mt-0.5 break-words">{msg.content || ""}</p>
+                                          </div>
+                                        ))
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     )}

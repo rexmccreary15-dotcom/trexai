@@ -50,36 +50,32 @@ export default function Home() {
     }
   }, [user, supabase]);
 
-  // Check authentication status
+  // Auth: use getSession() for initial state (reliable after nav). Clear chats only on explicit sign-out.
   useEffect(() => {
     if (!supabase) return;
-    
-    // Get current user
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
-      // On page reload: if logged out, clear localStorage chats (they disappear on reload)
-      if (!user) {
-        // Check if this is a page reload (not SPA navigation)
-        const navEntry = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
-        if (navEntry && navEntry.type === 'reload') {
-          // Only clear on actual page reload, not on client-side navigation
-          localStorage.removeItem("ai-chat-history");
-        }
+
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const u = session?.user ?? null;
+      setUser(u);
+      if (!u) {
+        localStorage.removeItem("ai-chat-history");
+        setChats([]);
       }
-    }).catch((err) => {
-      console.error('Error getting user:', err);
-    });
+    };
+    init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
-      if (!currentUser) setChats(getChats());
+      if (!currentUser) {
+        localStorage.removeItem("ai-chat-history");
+        setChats([]);
+      }
     });
 
     return () => {
-      if (subscription) {
-        subscription.unsubscribe();
-      }
+      subscription?.unsubscribe();
     };
   }, [supabase]);
 

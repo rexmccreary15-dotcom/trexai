@@ -310,6 +310,8 @@ export async function getChatMessagesFromDB(chatId: string): Promise<any[] | nul
     return (messages || []).map((msg) => ({
       role: msg.role,
       content: msg.content,
+      created_at: (msg as { created_at?: string }).created_at,
+      sequence_number: (msg as { sequence_number?: number }).sequence_number,
     }));
   } catch (error) {
     console.error('Error in getChatMessagesFromDB:', error);

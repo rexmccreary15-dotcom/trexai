@@ -40,14 +40,13 @@ export async function GET(request: NextRequest) {
           .eq('id', user.id);
       }
 
-      // If user has auth_user_id but no email, fetch from Supabase Auth
+      // Always try to get email from Supabase Auth when we have auth_user_id
       let userEmail = user.email;
-      if (user.auth_user_id && !userEmail) {
+      if (user.auth_user_id) {
         try {
           const { data: authUser, error: authError } = await adminClient.auth.admin.getUserById(user.auth_user_id);
           if (!authError && authUser?.user?.email) {
             userEmail = authUser.user.email;
-            // Update our users table with the email
             await adminClient
               .from('users')
               .update({ email: userEmail })

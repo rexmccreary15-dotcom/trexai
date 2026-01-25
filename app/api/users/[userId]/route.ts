@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabase";
+import { getChatMessagesFromDB } from "@/lib/db/chatStorage";
 
 const adminClient = createSupabaseAdmin();
 
-// GET - Get specific user details
+// GET - Get specific user details including chats with messages
 export async function GET(
   request: NextRequest,
   { params }: { params: { userId: string } }
@@ -28,15 +29,13 @@ export async function GET(
       );
     }
 
-    // If user has auth_user_id, get email from Supabase Auth
+    // Always try to get email from Supabase Auth when we have auth_user_id
     let userEmail = user.email;
-    if (user.auth_user_id && !userEmail) {
+    if (user.auth_user_id) {
       try {
-        // Get email from Supabase Auth users table
         const { data: authUser, error: authError } = await adminClient.auth.admin.getUserById(user.auth_user_id);
         if (!authError && authUser?.user?.email) {
           userEmail = authUser.user.email;
-          // Update our users table with the email
           await adminClient
             .from('users')
             .update({ email: userEmail })
@@ -47,7 +46,6 @@ export async function GET(
       }
     }
 
-    // Get user's chats
     const { data: chats } = await adminClient
       .from('chats')
       .select('*')
@@ -55,7 +53,11 @@ export async function GET(
       .order('updated_at', { ascending: false })
       .limit(100);
 
-    // Recalculate actual message count from analytics events (more accurate)
+    const chatsWithMessages = await Promise.all((chats || []).map(async (chat) => {
+      const messages = await getChatMessagesFromDB(chat.id);
+      return { ...chat, messages: messages || [] };
+    }));
+
     const { count: actualMessageCount, error: countError } = await adminClient
       .from('analytics_events')
       .select('*', { count: 'exact', head: true })
@@ -66,24 +68,20 @@ export async function GET(
       console.error('Error counting messages:', countError);
     }
 
-    // Update the user's message_count in the database if it's different
     const storedCount = user.message_count || 0;
     const realCount = actualMessageCount || 0;
-    
     if (realCount !== storedCount && realCount > 0) {
-      console.log(`Updating user ${userId} message_count: ${storedCount} -> ${realCount}`);
       await adminClient
         .from('users')
         .update({ message_count: realCount })
         .eq('id', userId);
-      user.message_count = realCount;
     }
 
     return NextResponse.json({
       ...user,
-      email: userEmail || user.email || null, // Use email from auth if available
-      message_count: realCount, // Always return the actual count
-      chats: chats || [],
+      email: userEmail || user.email || null,
+      message_count: realCount,
+      chats: chatsWithMessages,
     });
   } catch (error: any) {
     console.error('Error fetching user:', error);
