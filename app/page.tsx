@@ -99,13 +99,20 @@ export default function Home() {
     setShowFirstTimeModal(false);
   };
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
     if (!supabase) return;
-    supabase.auth.signOut().then(() => {
+    try {
+      await supabase.auth.signOut();
       localStorage.removeItem("ai-chat-history");
       setChats([]);
       window.location.reload();
-    });
+    } catch (e) {
+      console.error("Sign out error:", e);
+      // Still reload even if signOut fails
+      localStorage.removeItem("ai-chat-history");
+      setChats([]);
+      window.location.reload();
+    }
   };
 
   return (

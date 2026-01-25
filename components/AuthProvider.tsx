@@ -24,11 +24,14 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       return;
     }
 
+    // Set loading false immediately so UI can render
+    setLoading(false);
+
     const init = async () => {
       try {
         let session = (await supabase.auth.getSession()).data?.session;
         if (!session && typeof window !== "undefined") {
-          await new Promise((r) => setTimeout(r, 80));
+          await new Promise((r) => setTimeout(r, 50));
           session = (await supabase.auth.getSession()).data?.session;
         }
         const u = session?.user ?? null;
@@ -40,8 +43,6 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         console.error("Auth init error:", e);
         setUser(null);
         localStorage.removeItem("ai-chat-history");
-      } finally {
-        setLoading(false);
       }
     };
     init();

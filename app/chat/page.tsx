@@ -434,6 +434,25 @@ export default function ChatPage() {
       console.log("Chat ID:", chatId || "MISSING!");
       console.log("Incognito mode:", incognitoMode);
       
+      // Get auth user info - try from context first, fallback to session
+      let authUserId: string | null = null;
+      let authUserEmail: string | null = null;
+      if (user) {
+        authUserId = user.id || null;
+        authUserEmail = user.email || null;
+      } else if (supabase) {
+        // Fallback: get from session directly if context user is null
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            authUserId = session.user.id;
+            authUserEmail = session.user.email || null;
+          }
+        } catch (e) {
+          console.error("Failed to get session for chat save:", e);
+        }
+      }
+
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -449,8 +468,8 @@ export default function ChatPage() {
           imageMimeType: imageMimeType, // Send mime type for proper format handling
           chatId: chatId, // Include chatId for saving chats
           sessionId: sessionId, // Include sessionId for analytics tracking
-          authUserId: user?.id || null, // Include authenticated user ID if logged in
-          authUserEmail: user?.email || null, // Include authenticated user email if logged in
+          authUserId: authUserId, // Include authenticated user ID if logged in
+          authUserEmail: authUserEmail, // Include authenticated user email if logged in
         }),
       });
 
