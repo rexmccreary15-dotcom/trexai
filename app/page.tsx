@@ -31,7 +31,11 @@ export default function Home() {
       return;
     }
     if (!supabase) return;
-    const { data: { session } } = await supabase.auth.getSession();
+    let session = (await supabase.auth.getSession()).data?.session;
+    if (!session?.access_token) {
+      await new Promise((r) => setTimeout(r, 80));
+      session = (await supabase.auth.getSession()).data?.session;
+    }
     if (!session?.access_token) return;
     try {
       const res = await fetch("/api/chats", {
@@ -50,7 +54,12 @@ export default function Home() {
 
     const init = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        let session = (await supabase.auth.getSession()).data?.session;
+        // Retry briefly in case storage isn't ready yet (e.g. right after client-side nav)
+        if (!session && typeof window !== "undefined") {
+          await new Promise((r) => setTimeout(r, 50));
+          session = (await supabase.auth.getSession()).data?.session;
+        }
         const u = session?.user ?? null;
         setUser(u);
         if (!u) {
@@ -72,8 +81,8 @@ export default function Home() {
         setChats([]);
         return;
       }
-      const u = session?.user ?? null;
-      setUser(u);
+      // Never overwrite user with null except on SIGNED_OUT (avoids spurious null events on nav/token refresh)
+      if (session?.user) setUser(session.user);
     });
 
     return () => subscription?.unsubscribe();

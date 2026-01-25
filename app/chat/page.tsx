@@ -81,7 +81,11 @@ export default function ChatPage() {
 
     const load = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        let session = (await supabase.auth.getSession()).data?.session;
+        if (!session && typeof window !== "undefined") {
+          await new Promise((r) => setTimeout(r, 50));
+          session = (await supabase.auth.getSession()).data?.session;
+        }
         const u = session?.user ?? null;
         setUser(u);
         setCreatorUnlocked(false);
@@ -113,21 +117,20 @@ export default function ChatPage() {
         setIncognitoMode(false);
         return;
       }
-      const u = session?.user ?? null;
-      setUser(u);
+      // Never overwrite user with null except on SIGNED_OUT (avoids spurious null events on nav/token refresh)
+      if (!session?.user) return;
+      setUser(session.user);
       setCreatorUnlocked(false);
-      if (u && session?.access_token) {
-        try {
-          const res = await fetch("/api/creator-controls", {
-            headers: { "Authorization": `Bearer ${session.access_token}` },
-          });
-          if (res.ok) {
-            const d = await res.json();
-            setCreatorUnlocked(!!d.unlocked);
-          }
-        } catch {
-          setCreatorUnlocked(false);
+      try {
+        const res = await fetch("/api/creator-controls", {
+          headers: { "Authorization": `Bearer ${session.access_token}` },
+        });
+        if (res.ok) {
+          const d = await res.json();
+          setCreatorUnlocked(!!d.unlocked);
         }
+      } catch {
+        setCreatorUnlocked(false);
       }
     });
 
