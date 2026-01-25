@@ -59,7 +59,15 @@ export default function AuthModal({ isOpen, onClose, onSuccess, theme }: AuthMod
         },
       });
 
-      if (signUpError) throw signUpError;
+      if (signUpError) {
+        // Check if email authentication is disabled
+        if (signUpError.message.includes("email logins are disabled") || signUpError.message.includes("Email provider is disabled")) {
+          setError("Email authentication is disabled in Supabase. Please enable it in your Supabase dashboard: Authentication → Providers → Email → Toggle ON. See FIX_EMAIL_LOGIN_DISABLED.md for detailed instructions.");
+          setLoading(false);
+          return;
+        }
+        throw signUpError;
+      }
 
       if (data.user) {
         // If user is created, they're automatically confirmed
@@ -98,6 +106,11 @@ export default function AuthModal({ isOpen, onClose, onSuccess, theme }: AuthMod
         if (signInError.message.includes("Email not confirmed")) {
           setError("Please verify your email first. Check your inbox for the verification code.");
           setMode("verify");
+          return;
+        }
+        // Check if email authentication is disabled
+        if (signInError.message.includes("email logins are disabled") || signInError.message.includes("Email provider is disabled")) {
+          setError("Email authentication is disabled in Supabase. Please enable it in your Supabase dashboard: Authentication → Providers → Email → Toggle ON. See FIX_EMAIL_LOGIN_DISABLED.md for detailed instructions.");
           return;
         }
         throw signInError;

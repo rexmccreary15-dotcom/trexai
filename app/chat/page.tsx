@@ -45,6 +45,14 @@ export default function ChatPage() {
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [showCreatorControls, setShowCreatorControls] = useState(false);
   const [creatorUnlocked, setCreatorUnlocked] = useState(false);
+  
+  // Ensure creatorUnlocked is false on initial load if no user
+  useEffect(() => {
+    if (!user) {
+      setCreatorUnlocked(false);
+      setShowCreatorControls(false);
+    }
+  }, []); // Run once on mount
   const [apiKeys, setApiKeys] = useState({ openai: "", gemini: "", claude: "" });
   const [codingMode, setCodingMode] = useState(false);
   const [temperature, setTemperature] = useState(0.7);
@@ -67,20 +75,76 @@ export default function ChatPage() {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
-  // Check authentication status
+  // Check authentication status and load creator controls unlock status
   useEffect(() => {
     if (!supabase) return;
     
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    const loadUserAndCreatorControls = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
-    }).catch((err) => {
-      console.error('Error getting user:', err);
-    });
+      
+      // IMPORTANT: Always clear creatorUnlocked first, then set it if user is logged in
+      setCreatorUnlocked(false);
+      
+      // If user is logged in, check creator controls unlock status from database
+      if (user) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            const response = await fetch("/api/creator-controls", {
+              headers: {
+                "Authorization": `Bearer ${session.access_token}`,
+              },
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              setCreatorUnlocked(data.unlocked || false);
+            } else {
+              setCreatorUnlocked(false);
+            }
+          } else {
+            setCreatorUnlocked(false);
+          }
+        } catch (error) {
+          console.error("Error loading creator controls status:", error);
+          setCreatorUnlocked(false);
+        }
+      }
+    };
+
+    loadUserAndCreatorControls();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      
+      // IMPORTANT: Always clear creatorUnlocked first when auth state changes
+      setCreatorUnlocked(false);
+      
+      // Reload creator controls status when auth state changes (only if logged in)
+      if (currentUser && session) {
+        try {
+          const response = await fetch("/api/creator-controls", {
+            headers: {
+              "Authorization": `Bearer ${session.access_token}`,
+            },
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            setCreatorUnlocked(data.unlocked || false);
+          } else {
+            setCreatorUnlocked(false);
+          }
+        } catch (error) {
+          console.error("Error loading creator controls status:", error);
+          setCreatorUnlocked(false);
+        }
+      }
+      // If no user, creatorUnlocked is already set to false above
     });
 
     return () => {
@@ -88,7 +152,14 @@ export default function ChatPage() {
         subscription.unsubscribe();
       }
     };
-  }, []);
+  }, [supabase]);
+
+  // Additional safety check: if user is null, ensure creatorUnlocked is false
+  useEffect(() => {
+    if (!user) {
+      setCreatorUnlocked(false);
+    }
+  }, [user]);
 
   // Load commands from localStorage
   useEffect(() => {
@@ -97,9 +168,7 @@ export default function ChatPage() {
       setCommands(JSON.parse(savedCommands));
     }
     
-    // Check if creator controls are unlocked
-    const unlocked = localStorage.getItem("creator-unlocked") === "true";
-    setCreatorUnlocked(unlocked);
+    // Creator controls unlock status is now loaded from database in the auth effect above
 
     // Load API keys
     const savedKeys = localStorage.getItem("ai-chat-api-keys");
@@ -524,7 +593,8 @@ export default function ChatPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          {creatorUnlocked && (
+          {/* Only show Creator Controls button if user is logged in AND unlocked */}
+          {user !== null && user !== undefined && creatorUnlocked === true && (
             <button
               onClick={() => setShowCreatorControls(true)}
               className={`p-2 rounded flex items-center gap-2 ${themeClasses.hover}`}
@@ -825,11 +895,14 @@ export default function ChatPage() {
         }}
         theme={theme}
       />
-      <CreatorControls
-        isOpen={showCreatorControls}
-        onClose={() => setShowCreatorControls(false)}
-        theme={theme}
-      />
+      {/* Only render CreatorControls if user is logged in */}
+      {user !== null && user !== undefined && (
+        <CreatorControls
+          isOpen={showCreatorControls}
+          onClose={() => setShowCreatorControls(false)}
+          theme={theme}
+        />
+      )}
     </div>
   );
 }

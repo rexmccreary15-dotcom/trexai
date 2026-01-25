@@ -1,0 +1,4 @@
+# One-line PowerShell command to run the migration
+# Just copy and paste this entire block into PowerShell:
+
+cd "c:\Users\Rexan\.cursor\cursor app"; $sql = Get-Content "add_creator_controls_unlocked.sql" -Raw; Write-Host "`n=== COPY THIS SQL ===" -ForegroundColor Cyan; Write-Host $sql -ForegroundColor White; Write-Host "`n=== STEPS ===" -ForegroundColor Cyan; Write-Host "1. Go to: https://supabase.com/dashboard" -ForegroundColor Yellow; Write-Host "2. Click your project" -ForegroundColor Yellow; Write-Host "3. Click 'SQL Editor' (left sidebar)" -ForegroundColor Yellow; Write-Host "4. Click 'New query'" -ForegroundColor Yellow; Write-Host "5. Paste the SQL above" -ForegroundColor Yellow; Write-Host "6. Click 'Run' (Ctrl+Enter)`n" -ForegroundColor Yellow; Write-Host "Opening Supabase Dashboard..." -ForegroundColor Green; Start-Sleep -Seconds 2; Start-Process "https://supabase.com/dashboard"

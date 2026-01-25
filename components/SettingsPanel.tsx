@@ -2,6 +2,7 @@
 
 import { X, Eye, EyeOff, Save, Moon, Sun, Lock, Unlock, Image as ImageIcon } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
+import { getSupabaseClient } from "@/lib/supabase";
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -42,7 +43,33 @@ export default function SettingsPanel({
   const [codeSuccess, setCodeSuccess] = useState("");
   const [backgroundImage, setBackgroundImage] = useState<string>("");
   const [selectedColor, setSelectedColor] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [user, setUser] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const supabase = getSupabaseClient();
+
+  // Check if user is logged in
+  useEffect(() => {
+    if (!supabase) return;
+    
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user);
+    }).catch((err) => {
+      console.error('Error getting user:', err);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => {
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
+  }, [supabase]);
 
   // Load background preferences
   useEffect(() => {
@@ -61,44 +88,85 @@ export default function SettingsPanel({
     setIsUnlocked(unlocked);
   }, []);
 
-  const handleCodeSubmit = () => {
+  const handleCodeSubmit = async () => {
     const code = codeInput.trim().toLowerCase();
-    let success = false;
     
     if (code === "incog25") {
+      // Incognito mode still uses localStorage (no login required)
       if (!isUnlocked) {
         setIsUnlocked(true);
         localStorage.setItem("incognito-unlocked", "true");
         setCodeSuccess("✓ Incognito mode unlocked!");
         setCodeError("");
-        success = true;
+        setCodeInput("");
+        setTimeout(() => setCodeSuccess(""), 3000);
       } else {
         setCodeSuccess("✓ Incognito mode already unlocked!");
         setCodeError("");
-        success = true;
+        setCodeInput("");
+        setTimeout(() => setCodeSuccess(""), 3000);
       }
-    } else if (code === "maker15") {
-      const creatorUnlocked = localStorage.getItem("creator-unlocked") === "true";
-      if (!creatorUnlocked) {
-        localStorage.setItem("creator-unlocked", "true");
-        setCodeSuccess("✓ Creator Controls unlocked!");
-        setCodeError("");
-        success = true;
-      } else {
-        setCodeSuccess("✓ Creator Controls already unlocked!");
-        setCodeError("");
-        success = true;
-      }
+      return;
     }
     
-    if (success) {
-      setCodeInput("");
-      setTimeout(() => setCodeSuccess(""), 3000);
-    } else {
-      setCodeError("Incorrect code. Please try again.");
+    if (code === "maker15") {
+      // Creator Controls require login
+      if (!user) {
+        setCodeError("You must be logged in to unlock Creator Controls. Please log in first.");
+        setCodeSuccess("");
+        setCodeInput("");
+        return;
+      }
+
+      setIsSubmitting(true);
+      setCodeError("");
       setCodeSuccess("");
-      setCodeInput("");
+
+      try {
+        // Get the session token
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !session) {
+          throw new Error("Not logged in. Please log in first.");
+        }
+
+        // Call API to unlock creator controls
+        const response = await fetch("/api/creator-controls", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ code: "maker15" }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to unlock Creator Controls");
+        }
+
+        setCodeSuccess(data.message || "✓ Creator Controls unlocked!");
+        setCodeError("");
+        setCodeInput("");
+        
+        // Trigger a page reload to update the UI (creator controls button will appear)
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } catch (err: any) {
+        setCodeError(err.message || "Failed to unlock Creator Controls. Please try again.");
+        setCodeSuccess("");
+        setCodeInput("");
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
     }
+    
+    // Invalid code
+    setCodeError("Incorrect code. Please try again.");
+    setCodeSuccess("");
+    setCodeInput("");
   };
 
   if (!isOpen) return null;
@@ -202,7 +270,7 @@ export default function SettingsPanel({
               <div className="flex-1">
                 <label className="font-semibold">Enter Unlock Code</label>
                 <p className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
-                  Enter codes to unlock features
+                  Enter codes to unlock features. Note: Creator Controls require login.
                 </p>
               </div>
             </div>
@@ -229,13 +297,14 @@ export default function SettingsPanel({
               />
               <button
                 onClick={handleCodeSubmit}
+                disabled={isSubmitting}
                 className={`px-4 py-2 rounded font-medium transition-colors ${
                   theme === "dark"
-                    ? "bg-purple-600 hover:bg-purple-700 text-white"
-                    : "bg-purple-600 hover:bg-purple-700 text-white"
+                    ? "bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
+                    : "bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
                 }`}
               >
-                Submit
+                {isSubmitting ? "Unlocking..." : "Submit"}
               </button>
             </div>
             {codeError && (
