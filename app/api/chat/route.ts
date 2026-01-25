@@ -32,7 +32,8 @@ async function saveChatAfterResponse(
   authUserEmail: string | null,
   response: string
 ): Promise<void> {
-  if (incognito || !chatId || (!sessionId && !authUserId)) return;
+  // Only save to DB when logged in (authUserId). Logged-out chats stay in localStorage only.
+  if (incognito || !chatId || !authUserId) return;
   const clean = (m: any) => ({ role: m.role, content: typeof m.content === 'string' ? m.content : (m.content?.[0]?.text ?? '') });
   const fullMessages = [...messages.map(clean), { role: 'assistant' as const, content: response }];
   try {

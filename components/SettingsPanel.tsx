@@ -83,15 +83,12 @@ export default function SettingsPanel({
     }
   }, []);
 
-  // Incognito unlock is session-only: reset when user logs out; never load from DB.
-  // Each time you log in, you must enter the code again.
+  // Incognito: when logged out, always "unlocked" (no code). When logged in, require code each session.
   useEffect(() => {
     if (!user) {
-      setIsUnlocked(false);
-      onIncognitoChange(false);
+      setIsUnlocked(true);
       return;
     }
-    // When user logs in, always start with incognito locked (must re-enter code)
     setIsUnlocked(false);
     onIncognitoChange(false);
   }, [user]);
@@ -100,15 +97,13 @@ export default function SettingsPanel({
     const code = codeInput.trim().toLowerCase();
     
     if (code === "incog25") {
-      if (!user) {
-        setCodeError("You must be logged in to unlock Incognito mode. Please log in first.");
-        setCodeSuccess("");
-        setCodeInput("");
-        return;
+      // Logged in: unlock incognito for this session. Logged out: incognito already available.
+      if (user) {
+        setIsUnlocked(true);
+        setCodeSuccess("✓ Incognito mode unlocked!");
+      } else {
+        setCodeSuccess("✓ Incognito is already available when logged out.");
       }
-      // Session-only: unlock in memory only. No API, no DB. Resets on logout.
-      setIsUnlocked(true);
-      setCodeSuccess("✓ Incognito mode unlocked!");
       setCodeError("");
       setCodeInput("");
       setTimeout(() => setCodeSuccess(""), 3000);

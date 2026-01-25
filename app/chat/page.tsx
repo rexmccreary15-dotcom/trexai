@@ -154,11 +154,10 @@ export default function ChatPage() {
     };
   }, [supabase]);
 
-  // Additional safety check: if user is null, ensure creatorUnlocked is false and incognito is off
+  // When logged out: only clear creator controls. Incognito can stay on.
   useEffect(() => {
     if (!user) {
       setCreatorUnlocked(false);
-      setIncognitoMode(false);
     }
   }, [user]);
 
