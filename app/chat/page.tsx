@@ -673,6 +673,13 @@ export default function ChatPage() {
             <p className={`text-xs mt-4 ${theme === "dark" ? "text-gray-500" : "text-gray-400"}`}>
               Use /commands to set up custom shortcuts
             </p>
+            {incognitoMode && selectedAI === "myai" && (
+              <div className={`mt-6 max-w-md mx-auto rounded-lg p-4 ${theme === "dark" ? "bg-purple-900/30 border-purple-700/50" : "bg-purple-50 border-purple-200"} border`}>
+                <p className={`text-xs ${theme === "dark" ? "text-purple-300" : "text-purple-800"}`}>
+                  🔒 <strong>Incognito + MyAI (HuggingFace):</strong> Your chats aren&apos;t saved locally or in the database. HuggingFace doesn&apos;t store conversation content, but may log metadata for 30 days. See Settings for full privacy details.
+                </p>
+              </div>
+            )}
             {!apiKeys.openai && !apiKeys.gemini && !apiKeys.claude && (
               <div className={`mt-6 max-w-md mx-auto rounded-lg p-4 ${theme === "dark" ? "bg-blue-900 border-blue-700" : "bg-blue-100 border-blue-300"} border`}>
                 <p className={`text-sm ${theme === "dark" ? "text-blue-200" : "text-blue-800"}`}>

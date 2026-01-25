@@ -83,30 +83,18 @@ export default function SettingsPanel({
     }
   }, []);
 
-  // Load incognito unlock from API when user is logged in; clear when not
+  // Incognito unlock is session-only: reset when user logs out; never load from DB.
+  // Each time you log in, you must enter the code again.
   useEffect(() => {
-    if (!supabase || !user) {
+    if (!user) {
       setIsUnlocked(false);
       onIncognitoChange(false);
       return;
     }
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session || cancelled) return;
-        const res = await fetch("/api/incognito-controls", {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
-        if (!res.ok || cancelled) return;
-        const data = await res.json();
-        if (!cancelled) setIsUnlocked(!!data.unlocked);
-      } catch {
-        if (!cancelled) setIsUnlocked(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [user, supabase]);
+    // When user logs in, always start with incognito locked (must re-enter code)
+    setIsUnlocked(false);
+    onIncognitoChange(false);
+  }, [user]);
 
   const handleCodeSubmit = async () => {
     const code = codeInput.trim().toLowerCase();
@@ -118,34 +106,12 @@ export default function SettingsPanel({
         setCodeInput("");
         return;
       }
-      setIsSubmitting(true);
+      // Session-only: unlock in memory only. No API, no DB. Resets on logout.
+      setIsUnlocked(true);
+      setCodeSuccess("✓ Incognito mode unlocked!");
       setCodeError("");
-      setCodeSuccess("");
-      try {
-        if (!supabase) throw new Error("Authentication service not available. Please refresh the page.");
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !session) throw new Error("Not logged in. Please log in first.");
-        const response = await fetch("/api/incognito-controls", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ code: "incog25" }),
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Failed to unlock Incognito mode");
-        setCodeSuccess(data.message || "✓ Incognito mode unlocked!");
-        setCodeError("");
-        setCodeInput("");
-        setTimeout(() => window.location.reload(), 1500);
-      } catch (err: any) {
-        setCodeError(err.message || "Failed to unlock Incognito mode. Please try again.");
-        setCodeSuccess("");
-        setCodeInput("");
-      } finally {
-        setIsSubmitting(false);
-      }
+      setCodeInput("");
+      setTimeout(() => setCodeSuccess(""), 3000);
       return;
     }
     
@@ -315,7 +281,7 @@ export default function SettingsPanel({
               <div className="flex-1">
                 <label className="font-semibold">Enter Unlock Code</label>
                 <p className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
-                  Enter codes to unlock features. Creator Controls and Incognito mode require login.
+                  Enter codes to unlock features. Creator Controls and Incognito require login. Incognito resets on logout—re-enter the code each time you log in.
                 </p>
               </div>
             </div>
@@ -388,6 +354,20 @@ export default function SettingsPanel({
                   />
                 </button>
               </div>
+              {incognitoMode && (
+                <div className={`p-3 rounded-lg border ${theme === "dark" ? "bg-purple-900/20 border-purple-700/50 text-purple-200" : "bg-purple-50 border-purple-200 text-purple-800"}`}>
+                  <p className={`text-xs font-medium mb-1 ${theme === "dark" ? "text-purple-300" : "text-purple-700"}`}>
+                    🔒 Privacy Notice
+                  </p>
+                  <p className={`text-xs ${theme === "dark" ? "text-purple-300/80" : "text-purple-700/80"}`}>
+                    <strong>Not saved:</strong> Chats won&apos;t be stored locally or in the database.
+                    <br />
+                    <strong>AI providers:</strong> Messages are still sent to AI services (OpenAI, Google, Anthropic, or HuggingFace) to generate responses. 
+                    <br />
+                    <strong>HuggingFace (MyAI):</strong> According to their policy, they don&apos;t store conversation content, but may log metadata for 30 days.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
