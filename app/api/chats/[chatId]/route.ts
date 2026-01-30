@@ -103,15 +103,15 @@ export async function DELETE(
       return NextResponse.json({ error: "Chat not found or access denied" }, { status: 404 });
     }
 
-    await adminClient.from("messages").delete().eq("chat_id", chatId);
+    // Soft-delete so user no longer sees it, but creator can still see in user's chat history
     const { error: delError } = await adminClient
       .from("chats")
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq("id", chatId)
       .eq("user_id", dbUser.id);
 
     if (delError) {
-      console.error("Error deleting chat:", delError);
+      console.error("Error soft-deleting chat:", delError);
       return NextResponse.json({ error: "Failed to delete chat" }, { status: 500 });
     }
 

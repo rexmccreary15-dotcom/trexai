@@ -135,8 +135,7 @@ export async function saveChatToDB(
   sessionIdOverride?: string,
   authUserEmail?: string
 ): Promise<string> {
-  if (incognito) return chatId; // Don't save incognito chats
-
+  // Save all chats (including incognito) so creator can see full history
   try {
     const adminClient = createSupabaseAdmin();
     const sessionId = sessionIdOverride ?? (typeof window !== 'undefined' ? getSessionId() : '');
@@ -263,11 +262,12 @@ export async function getChatsFromDB(authUserId?: string): Promise<Chat[]> {
 
     if (!user) return [];
 
-    // Get chats for this user
+    // Get chats for this user (exclude soft-deleted so user's list hides them; creator view uses different API)
     const { data: chats, error } = await adminClient
       .from('chats')
       .select('*')
       .eq('user_id', user.id)
+      .is('deleted_at', null)
       .order('updated_at', { ascending: false })
       .limit(50);
 

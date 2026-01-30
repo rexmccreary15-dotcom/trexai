@@ -157,6 +157,30 @@ export default function ChatPage() {
     }
   }, [commands, user, supabase]);
 
+  // When logged in, load profile (api_keys, default_ai) so Account Settings and default AI are in sync
+  useEffect(() => {
+    if (!user || !supabase) return;
+    let cancelled = false;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled || !session?.access_token) return;
+      fetch("/api/user/profile", { headers: { Authorization: `Bearer ${session.access_token}` } })
+        .then((res) => res.ok ? res.json() : null)
+        .then((data) => {
+          if (cancelled || !data) return;
+          if (data.api_keys && typeof data.api_keys === "object") {
+            setApiKeys({
+              openai: data.api_keys.openai ?? "",
+              gemini: data.api_keys.gemini ?? "",
+              claude: data.api_keys.claude ?? "",
+            });
+          }
+          if (data.default_ai) setSelectedAI(data.default_ai);
+        })
+        .catch(() => {});
+    });
+    return () => { cancelled = true; };
+  }, [user, supabase]);
+
   // Load API keys, theme, background, and other preferences from localStorage
   useEffect(() => {
     const savedKeys = localStorage.getItem("ai-chat-api-keys");
@@ -890,7 +914,6 @@ export default function ChatPage() {
       <AccountSettings
         isOpen={showAccountSettings}
         onClose={() => {
-          // Reload API keys when closing settings
           const savedKeys = localStorage.getItem("ai-chat-api-keys");
           if (savedKeys) {
             try {
@@ -900,12 +923,17 @@ export default function ChatPage() {
               console.error("Failed to load API keys");
             }
           }
+          const savedDefault = localStorage.getItem("trexai_default_ai");
+          if (savedDefault) setSelectedAI(savedDefault);
           setShowAccountSettings(false);
         }}
         onApiKeysChange={(keys) => {
           setApiKeys(keys);
           localStorage.setItem("ai-chat-api-keys", JSON.stringify(keys));
-          console.log("API keys updated:", { openai: keys.openai ? "***" + keys.openai.slice(-4) : "not set" });
+        }}
+        onDefaultAiChange={(ai) => {
+          setSelectedAI(ai);
+          localStorage.setItem("trexai_default_ai", ai);
         }}
         onGitHubChange={(connected, token) => {
           if (connected && token) {
@@ -918,14 +946,17 @@ export default function ChatPage() {
           setCodingMode(enabled);
           localStorage.setItem("coding-mode", enabled.toString());
         }}
+        user={user}
+        getSupabase={getSupabaseClient}
         theme={theme}
       />
-      {/* Only render CreatorControls if user is logged in */}
       {user !== null && user !== undefined && (
         <CreatorControls
           isOpen={showCreatorControls}
           onClose={() => setShowCreatorControls(false)}
           theme={theme}
+          user={user}
+          getSupabase={getSupabaseClient}
         />
       )}
     </div>

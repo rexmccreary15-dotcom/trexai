@@ -16,6 +16,7 @@ export default function Home() {
   const [chats, setChats] = useState<Chat[]>([]);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
+  const [firstTimeName, setFirstTimeName] = useState("");
   const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   const supabase = getSupabaseClient();
@@ -90,6 +91,31 @@ export default function Home() {
   };
 
   const handleSkipLogin = () => {
+    if (firstTimeName.trim()) {
+      localStorage.setItem("trexai_display_name", firstTimeName.trim());
+    }
+    localStorage.setItem("has-visited-before", "true");
+    setShowFirstTimeModal(false);
+  };
+
+  const handleFirstTimeContinue = async () => {
+    const name = firstTimeName.trim();
+    if (user && supabase && name) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          await fetch("/api/user/profile", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+            body: JSON.stringify({ display_name: name }),
+          });
+        }
+      } catch (e) {
+        console.error("Failed to save name:", e);
+      }
+    } else if (name) {
+      localStorage.setItem("trexai_display_name", name);
+    }
     localStorage.setItem("has-visited-before", "true");
     setShowFirstTimeModal(false);
   };
@@ -209,25 +235,36 @@ export default function Home() {
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <p className="text-gray-300">
+              <p className="text-gray-300">What should we call you?</p>
+              <input
+                type="text"
+                placeholder="Your name"
+                value={firstTimeName}
+                onChange={(e) => setFirstTimeName(e.target.value)}
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+              />
+              <p className="text-sm text-gray-400">
                 Create an account to save your chat history and access it from any device.
               </p>
-              <p className="text-sm text-gray-400">
-                You can skip this and use the site anonymously, but your chats won&apos;t be saved.
-              </p>
-              <div className="flex gap-3">
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={handleFirstTimeContinue}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg"
+                >
+                  Continue
+                </button>
                 <button
                   onClick={() => {
                     setShowFirstTimeModal(false);
                     setShowAuthModal(true);
                   }}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg"
+                  className="w-full bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg"
                 >
                   Create Account / Log In
                 </button>
                 <button
                   onClick={handleSkipLogin}
-                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg"
+                  className="w-full text-gray-400 hover:text-white py-2 text-sm"
                 >
                   Skip for Now
                 </button>

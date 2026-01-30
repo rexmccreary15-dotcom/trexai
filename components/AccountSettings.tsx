@@ -9,6 +9,9 @@ interface AccountSettingsProps {
   onApiKeysChange: (keys: ApiKeys) => void;
   onGitHubChange: (connected: boolean, token?: string) => void;
   onCodingModeChange: (enabled: boolean) => void;
+  onDefaultAiChange?: (defaultAi: string) => void;
+  user?: { id: string } | null;
+  getSupabase?: () => { auth: { getSession: () => Promise<{ data: { session: { access_token: string } | null } }> } } | null;
   theme: "dark" | "light";
 }
 
@@ -24,6 +27,9 @@ export default function AccountSettings({
   onApiKeysChange,
   onGitHubChange,
   onCodingModeChange,
+  onDefaultAiChange,
+  user,
+  getSupabase,
   theme,
 }: AccountSettingsProps) {
   const [apiKeys, setApiKeys] = useState<ApiKeys>({
@@ -31,6 +37,7 @@ export default function AccountSettings({
     gemini: "",
     claude: "",
   });
+  const [defaultAi, setDefaultAi] = useState<string>("myai");
   const [showKeys, setShowKeys] = useState({
     openai: false,
     gemini: false,
@@ -41,36 +48,84 @@ export default function AccountSettings({
   const [codingMode, setCodingMode] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // Load from profile when logged in, else localStorage
   useEffect(() => {
-    // Load saved API keys
-    const savedKeys = localStorage.getItem("ai-chat-api-keys");
-    if (savedKeys) {
-      try {
-        const keys = JSON.parse(savedKeys);
-        setApiKeys(keys);
-      } catch (e) {
-        console.error("Failed to load API keys");
+    if (!isOpen) return;
+    const load = async () => {
+      if (user && getSupabase) {
+        const supabase = getSupabase();
+        if (supabase) {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.access_token) {
+              const res = await fetch("/api/user/profile", {
+                headers: { Authorization: `Bearer ${session.access_token}` },
+              });
+              if (res.ok) {
+                const data = await res.json();
+                if (data.api_keys && typeof data.api_keys === "object") {
+                  setApiKeys({
+                    openai: data.api_keys.openai ?? "",
+                    gemini: data.api_keys.gemini ?? "",
+                    claude: data.api_keys.claude ?? "",
+                  });
+                }
+                if (data.default_ai) setDefaultAi(data.default_ai);
+              }
+            }
+          } catch (e) {
+            console.error("Failed to load profile", e);
+          }
+        }
+      } else {
+        const savedKeys = localStorage.getItem("ai-chat-api-keys");
+        if (savedKeys) {
+          try {
+            const keys = JSON.parse(savedKeys);
+            setApiKeys(keys);
+          } catch (e) {
+            console.error("Failed to load API keys");
+          }
+        }
+        const savedDefault = localStorage.getItem("trexai_default_ai");
+        if (savedDefault) setDefaultAi(savedDefault);
       }
+      const ghToken = localStorage.getItem("github-token");
+      if (ghToken) {
+        setGitHubConnected(true);
+        setGitHubToken(ghToken);
+      }
+      const coding = localStorage.getItem("coding-mode") === "true";
+      setCodingMode(coding);
+    };
+    load();
+  }, [isOpen, user, getSupabase]);
+
+  const handleSave = async () => {
+    if (user && getSupabase) {
+      const supabase = getSupabase();
+      if (supabase) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            await fetch("/api/user/profile", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+              body: JSON.stringify({ api_keys: apiKeys, default_ai: defaultAi }),
+            });
+          }
+        } catch (e) {
+          console.error("Failed to save profile", e);
+        }
+      }
+    } else {
+      localStorage.setItem("ai-chat-api-keys", JSON.stringify(apiKeys));
+      localStorage.setItem("trexai_default_ai", defaultAi);
     }
-
-    // Load GitHub status
-    const ghToken = localStorage.getItem("github-token");
-    if (ghToken) {
-      setGitHubConnected(true);
-      setGitHubToken(ghToken);
-    }
-
-    // Load coding mode
-    const coding = localStorage.getItem("coding-mode") === "true";
-    setCodingMode(coding);
-  }, []);
-
-  const handleSave = () => {
-    // Save API keys (in production, these should be encrypted)
     localStorage.setItem("ai-chat-api-keys", JSON.stringify(apiKeys));
     onApiKeysChange(apiKeys);
+    if (onDefaultAiChange) onDefaultAiChange(defaultAi);
 
-    // Save GitHub
     if (gitHubToken) {
       localStorage.setItem("github-token", gitHubToken);
       onGitHubChange(true, gitHubToken);
@@ -78,8 +133,6 @@ export default function AccountSettings({
       localStorage.removeItem("github-token");
       onGitHubChange(false);
     }
-
-    // Save coding mode
     localStorage.setItem("coding-mode", codingMode.toString());
     onCodingModeChange(codingMode);
 
@@ -113,8 +166,6 @@ export default function AccountSettings({
     localStorage.removeItem("github-token");
     onGitHubChange(false);
   };
-
-  if (!isOpen) return null;
 
   if (!isOpen) return null;
 
@@ -313,6 +364,24 @@ export default function AccountSettings({
                 </a>
               </p>
             </div>
+          </div>
+
+          {/* Default AI */}
+          <div className={`space-y-4 pt-4 border-t ${themeClasses.border}`}>
+            <h3 className="text-lg font-semibold">Default AI</h3>
+            <p className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
+              Choose which AI model is selected when you start a new chat. Saved to your account when logged in.
+            </p>
+            <select
+              value={defaultAi}
+              onChange={(e) => setDefaultAi(e.target.value)}
+              className={`w-full ${themeClasses.input} rounded px-3 py-2 focus:outline-none focus:border-blue-500`}
+            >
+              <option value="myai">myai (Free)</option>
+              <option value="openai">ChatGPT (OpenAI)</option>
+              <option value="gemini">Gemini</option>
+              <option value="claude">Claude</option>
+            </select>
           </div>
 
           {/* GitHub Section */}

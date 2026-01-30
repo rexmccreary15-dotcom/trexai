@@ -1,18 +1,22 @@
 "use client";
 
-import { X, BarChart3, Palette, Shield, Settings, Users, Download, Zap, Key, ToggleLeft, FileText, Search } from "lucide-react";
+import { X, BarChart3, Palette, Shield, Settings, Users, Download, Zap, Key, ToggleLeft, FileText, Search, EyeOff } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
 
 interface CreatorControlsProps {
   isOpen: boolean;
   onClose: () => void;
   theme: "dark" | "light";
+  user?: { id: string } | null;
+  getSupabase?: () => { auth: { getSession: () => Promise<{ data: { session: { access_token: string } | null } }> } } | null;
 }
 
 export default function CreatorControls({
   isOpen,
   onClose,
   theme,
+  user,
+  getSupabase,
 }: CreatorControlsProps) {
   const [activeTab, setActiveTab] = useState<string>("analytics");
   const [analytics, setAnalytics] = useState<any>(null);
@@ -30,6 +34,8 @@ export default function CreatorControls({
   const [rateLimitSettings, setRateLimitSettings] = useState<any>({});
   const [featureSettings, setFeatureSettings] = useState<any>({});
   const [advancedSettings, setAdvancedSettings] = useState<any>({});
+  const [creatorApiKeys, setCreatorApiKeys] = useState({ openai: "", gemini: "", claude: "" });
+  const [creatorApiKeysSaved, setCreatorApiKeysSaved] = useState(false);
 
   // Define functions BEFORE useEffect hooks that use them
   const fetchSettings = async (type: string, setter: any) => {
@@ -141,6 +147,29 @@ export default function CreatorControls({
       fetchUsers();
     }
   }, [isOpen, activeTab, fetchUsers]);
+
+  // Load creator's API keys from profile when API Keys tab is opened (saved to account = same as Account Settings)
+  useEffect(() => {
+    if (!isOpen || activeTab !== "api-keys" || !user || !getSupabase) return;
+    const supabase = getSupabase();
+    if (!supabase) return;
+    let cancelled = false;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled || !session?.access_token) return;
+      fetch("/api/user/profile", { headers: { Authorization: `Bearer ${session.access_token}` } })
+        .then((res) => res.ok ? res.json() : null)
+        .then((data) => {
+          if (cancelled || !data?.api_keys) return;
+          setCreatorApiKeys({
+            openai: data.api_keys.openai ?? "",
+            gemini: data.api_keys.gemini ?? "",
+            claude: data.api_keys.claude ?? "",
+          });
+        })
+        .catch(() => {});
+    });
+    return () => { cancelled = true; };
+  }, [isOpen, activeTab, user, getSupabase]);
 
   // Fetch settings when respective tabs are opened
   useEffect(() => {
@@ -742,7 +771,12 @@ export default function CreatorControls({
                                             Scroll to see all {byTime.length} message{byTime.length !== 1 ? "s" : ""} across all chats.
                                           </p>
                                           {byTime.map(({ chat, msg }, i) => (
-                                            <div key={i} className={`p-2 rounded ${themeClasses.bg} border ${themeClasses.border}`}>
+                                            <div key={i} className={`p-2 rounded ${themeClasses.bg} border ${themeClasses.border} relative`}>
+                                              {chat.is_incognito && (
+                                                <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-purple-600 flex items-center justify-center" title="Incognito chat">
+                                                  <EyeOff size={14} className="text-white" />
+                                                </div>
+                                              )}
                                               <p className={`text-xs ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
                                                 {msg.created_at ? new Date(msg.created_at).toLocaleString() : "—"} • {chat.title || "Untitled Chat"}
                                               </p>
@@ -903,45 +937,72 @@ export default function CreatorControls({
               </div>
             )}
 
-            {/* API Keys Tab */}
+            {/* API Keys Tab - saved to your account; same keys appear in Account Settings (👤) */}
             {activeTab === "api-keys" && (
               <div className="space-y-6">
-                <h3 className="text-lg font-semibold">Server-Side API Key Management</h3>
+                <h3 className="text-lg font-semibold">Your API Keys (saved to your account)</h3>
+                <p className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
+                  Keys you enter here are saved under your login and appear in Account Settings (👤). Use them when chatting with ChatGPT, Gemini, or Claude.
+                </p>
                 <div className="space-y-4">
                   <div>
-                    <label className="block font-medium mb-2">HuggingFace API Key (for Free Mode)</label>
-                    <input
-                      type="password"
-                      placeholder="hf_..."
-                      className={`w-full ${themeClasses.input} rounded px-3 py-2 border focus:outline-none focus:border-blue-500`}
-                    />
-                    <p className={`text-xs mt-1 ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
-                      This key is used for MyAI (free mode) when users don&apos;t provide their own keys.
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block font-medium mb-2">OpenAI API Key (Optional)</label>
+                    <label className="block font-medium mb-2">OpenAI (ChatGPT)</label>
                     <input
                       type="password"
                       placeholder="sk-..."
+                      value={creatorApiKeys.openai}
+                      onChange={(e) => setCreatorApiKeys((p) => ({ ...p, openai: e.target.value }))}
                       className={`w-full ${themeClasses.input} rounded px-3 py-2 border focus:outline-none focus:border-blue-500`}
                     />
                   </div>
                   <div>
-                    <label className="block font-medium mb-2">Gemini API Key (Optional)</label>
+                    <label className="block font-medium mb-2">Gemini</label>
                     <input
                       type="password"
                       placeholder="AIza..."
+                      value={creatorApiKeys.gemini}
+                      onChange={(e) => setCreatorApiKeys((p) => ({ ...p, gemini: e.target.value }))}
+                      className={`w-full ${themeClasses.input} rounded px-3 py-2 border focus:outline-none focus:border-blue-500`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-medium mb-2">Claude</label>
+                    <input
+                      type="password"
+                      placeholder="sk-ant-..."
+                      value={creatorApiKeys.claude}
+                      onChange={(e) => setCreatorApiKeys((p) => ({ ...p, claude: e.target.value }))}
                       className={`w-full ${themeClasses.input} rounded px-3 py-2 border focus:outline-none focus:border-blue-500`}
                     />
                   </div>
                   <div className={`${themeClasses.card} p-3 rounded`}>
-                    <p className={`text-sm ${theme === "dark" ? "text-yellow-300" : "text-yellow-700"}`}>
-                      ⚠️ Server-side keys are stored in environment variables. Update them in your Vercel dashboard or .env.local file.
+                    <p className={`text-sm ${theme === "dark" ? "text-blue-300" : "text-blue-700"}`}>
+                      💡 Free Mode (MyAI) uses a server-side HuggingFace key set in Vercel or .env.local. Your keys here are for your own use when you pick ChatGPT/Gemini/Claude.
                     </p>
                   </div>
-                  <button className={`${themeClasses.button} text-white px-4 py-2 rounded`}>
-                    Save API Keys
+                  <button
+                    onClick={async () => {
+                      if (!user || !getSupabase) return;
+                      const supabase = getSupabase();
+                      const { data: { session } } = await supabase?.auth.getSession() ?? { data: { session: null } };
+                      if (!session?.access_token) return;
+                      try {
+                        const res = await fetch("/api/user/profile", {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+                          body: JSON.stringify({ api_keys: creatorApiKeys }),
+                        });
+                        if (res.ok) {
+                          setCreatorApiKeysSaved(true);
+                          setTimeout(() => setCreatorApiKeysSaved(false), 2000);
+                        }
+                      } catch (e) {
+                        console.error("Failed to save API keys", e);
+                      }
+                    }}
+                    className={`${themeClasses.button} text-white px-4 py-2 rounded`}
+                  >
+                    {creatorApiKeysSaved ? "Saved!" : "Save API Keys to my account"}
                   </button>
                 </div>
               </div>
