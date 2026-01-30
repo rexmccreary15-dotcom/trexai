@@ -76,27 +76,34 @@ export default function Home() {
     setChats(getChats());
   };
 
-  const handleStartNewChat = () => {
-    const hasAskedName = localStorage.getItem("trexai-has-asked-name");
-    if (!hasAskedName) {
-      setPendingNewChat(true);
-      setShowFirstTimeModal(true);
-      return;
+  const handleStartNewChat = async () => {
+    // Always ask for name when starting a new chat (required). Pre-fill if we have it.
+    const savedName = localStorage.getItem("trexai_display_name");
+    setFirstTimeName(savedName || "");
+    setPendingNewChat(true);
+    setShowFirstTimeModal(true);
+    if (user && supabase) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          const res = await fetch("/api/user/profile", { headers: { Authorization: `Bearer ${session.access_token}` } });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.display_name) setFirstTimeName(data.display_name);
+          }
+        }
+      } catch (_) {}
     }
-    router.push(`/chat?new=${Date.now()}`);
   };
 
   const handleSkipLogin = () => {
     if (firstTimeName.trim()) {
       localStorage.setItem("trexai_display_name", firstTimeName.trim());
     }
-    localStorage.setItem("trexai-has-asked-name", "true");
     localStorage.setItem("has-visited-before", "true");
     setShowFirstTimeModal(false);
-    if (pendingNewChat) {
-      setPendingNewChat(false);
-      router.push(`/chat?new=${Date.now()}`);
-    }
+    setPendingNewChat(false);
+    // If they skipped from "Start new chat" flow, don't go to new chat (name required)
   };
 
   const handleFirstTimeContinue = async () => {
@@ -118,7 +125,6 @@ export default function Home() {
     if (name) {
       localStorage.setItem("trexai_display_name", name);
     }
-    localStorage.setItem("trexai-has-asked-name", "true");
     localStorage.setItem("has-visited-before", "true");
     setShowFirstTimeModal(false);
     if (pendingNewChat) {
@@ -128,13 +134,9 @@ export default function Home() {
   };
 
   const handleAuthSuccess = () => {
-    localStorage.setItem("trexai-has-asked-name", "true");
     localStorage.setItem("has-visited-before", "true");
     setShowFirstTimeModal(false);
-    if (pendingNewChat) {
-      setPendingNewChat(false);
-      router.push(`/chat?new=${Date.now()}`);
-    }
+    setPendingNewChat(false);
   };
 
   const handleSignOut = async () => {

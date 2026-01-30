@@ -103,7 +103,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Chat not found or access denied" }, { status: 404 });
     }
 
-    // Soft-delete so user no longer sees it (creator can still see). If deleted_at column missing, hard-delete.
+    // Soft-delete only: user no longer sees it on home, but creator still sees full history (including deleted).
     const { error: delError } = await adminClient
       .from("chats")
       .update({ deleted_at: new Date().toISOString() })
@@ -111,17 +111,8 @@ export async function DELETE(
       .eq("user_id", dbUser.id);
 
     if (delError) {
-      // Column may not exist yet; fall back to hard delete so delete always works
-      await adminClient.from("messages").delete().eq("chat_id", chatId);
-      const { error: hardErr } = await adminClient
-        .from("chats")
-        .delete()
-        .eq("id", chatId)
-        .eq("user_id", dbUser.id);
-      if (hardErr) {
-        console.error("Error deleting chat:", hardErr);
-        return NextResponse.json({ error: "Failed to delete chat" }, { status: 500 });
-      }
+      console.error("Error soft-deleting chat (run add_creator_chat_features.sql to add deleted_at column):", delError);
+      return NextResponse.json({ error: "Failed to delete chat. Add deleted_at column in Supabase." }, { status: 500 });
     }
 
     return NextResponse.json({ ok: true });

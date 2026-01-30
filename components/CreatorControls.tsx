@@ -780,6 +780,7 @@ export default function CreatorControls({
                                               )}
                                               <p className={`text-xs ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
                                                 {msg.created_at ? new Date(msg.created_at).toLocaleString() : "—"} • {chat.title || "Untitled Chat"}
+                                                {chat.deleted_at && <span className={theme === "dark" ? "text-amber-400" : "text-amber-600"} title="User deleted this from their list"> • (deleted by user)</span>}
                                               </p>
                                               <p className="text-sm mt-0.5 break-words">{msg.content || ""}</p>
                                             </div>

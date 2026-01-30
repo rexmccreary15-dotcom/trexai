@@ -46,6 +46,7 @@ export async function GET(
       }
     }
 
+    // Include ALL chats (no filter on deleted_at) so creator sees full history including user-deleted
     const { data: chats } = await adminClient
       .from('chats')
       .select('*')
