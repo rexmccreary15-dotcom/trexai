@@ -3,6 +3,7 @@ import "./globals.css";
 import { Suspense } from "react";
 import AuthProvider from "@/components/AuthProvider";
 import HeartbeatProvider from "@/components/HeartbeatProvider";
+import { BannedGuard } from "@/components/BannedGuard";
 
 export const metadata: Metadata = {
   title: "TREXAI",
@@ -17,11 +18,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AuthProvider>
-          <Suspense fallback={<div className="p-4 text-center text-gray-400">Loading...</div>}>
-            <HeartbeatProvider>{children}</HeartbeatProvider>
-          </Suspense>
-        </AuthProvider>
+        <BannedGuard>
+          <AuthProvider>
+            <Suspense fallback={<div className="p-4 text-center text-gray-400">Loading...</div>}>
+              <HeartbeatProvider>{children}</HeartbeatProvider>
+            </Suspense>
+          </AuthProvider>
+        </BannedGuard>
       </body>
     </html>
   );
