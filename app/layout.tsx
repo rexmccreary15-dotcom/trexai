@@ -1,18 +1,10 @@
 import { BannedGuard } from "@/components/BannedGuard";
 
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "TREXAI",
   description: "TREXAI Chat",
-};
-
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 5,
-  userScalable: true,
-  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -22,7 +14,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-screen overflow-x-hidden antialiased">
+      <body>
         <BannedGuard>{children}
       </BannedGuard>
 
