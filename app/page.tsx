@@ -17,14 +17,10 @@ export default function Home() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
   const [firstTimeName, setFirstTimeName] = useState("");
+  const [pendingNewChat, setPendingNewChat] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   const supabase = getSupabaseClient();
-
-  useEffect(() => {
-    const hasVisitedBefore = localStorage.getItem("has-visited-before");
-    if (!hasVisitedBefore) setShowFirstTimeModal(true);
-  }, []);
 
   const loadChats = useCallback(async () => {
     if (!user) {
@@ -81,12 +77,12 @@ export default function Home() {
   };
 
   const handleStartNewChat = () => {
-    const hasVisitedBefore = localStorage.getItem("has-visited-before");
-    if (!hasVisitedBefore && !user) {
+    const hasAskedName = localStorage.getItem("trexai-has-asked-name");
+    if (!hasAskedName) {
+      setPendingNewChat(true);
       setShowFirstTimeModal(true);
       return;
     }
-    localStorage.setItem("has-visited-before", "true");
     router.push(`/chat?new=${Date.now()}`);
   };
 
@@ -94,8 +90,13 @@ export default function Home() {
     if (firstTimeName.trim()) {
       localStorage.setItem("trexai_display_name", firstTimeName.trim());
     }
+    localStorage.setItem("trexai-has-asked-name", "true");
     localStorage.setItem("has-visited-before", "true");
     setShowFirstTimeModal(false);
+    if (pendingNewChat) {
+      setPendingNewChat(false);
+      router.push(`/chat?new=${Date.now()}`);
+    }
   };
 
   const handleFirstTimeContinue = async () => {
@@ -113,16 +114,27 @@ export default function Home() {
       } catch (e) {
         console.error("Failed to save name:", e);
       }
-    } else if (name) {
+    }
+    if (name) {
       localStorage.setItem("trexai_display_name", name);
     }
+    localStorage.setItem("trexai-has-asked-name", "true");
     localStorage.setItem("has-visited-before", "true");
     setShowFirstTimeModal(false);
+    if (pendingNewChat) {
+      setPendingNewChat(false);
+      router.push(`/chat?new=${Date.now()}`);
+    }
   };
 
   const handleAuthSuccess = () => {
+    localStorage.setItem("trexai-has-asked-name", "true");
     localStorage.setItem("has-visited-before", "true");
     setShowFirstTimeModal(false);
+    if (pendingNewChat) {
+      setPendingNewChat(false);
+      router.push(`/chat?new=${Date.now()}`);
+    }
   };
 
   const handleSignOut = async () => {

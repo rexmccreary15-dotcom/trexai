@@ -262,12 +262,11 @@ export async function getChatsFromDB(authUserId?: string): Promise<Chat[]> {
 
     if (!user) return [];
 
-    // Get chats for this user (exclude soft-deleted so user's list hides them; creator view uses different API)
+    // Get chats for this user (exclude soft-deleted in code so it works even if deleted_at column not yet added)
     const { data: chats, error } = await adminClient
       .from('chats')
       .select('*')
       .eq('user_id', user.id)
-      .is('deleted_at', null)
       .order('updated_at', { ascending: false })
       .limit(50);
 
@@ -276,15 +275,18 @@ export async function getChatsFromDB(authUserId?: string): Promise<Chat[]> {
       return [];
     }
 
+    // Hide soft-deleted from user's list (if deleted_at column exists)
+    const visible = (chats || []).filter((c: { deleted_at?: string | null }) => c.deleted_at == null);
+
     // Convert to Chat format
-    return (chats || []).map((chat) => ({
+    return visible.map((chat: { id: string; title?: string; summary?: string; updated_at?: string; created_at?: string; ai_model?: string; message_count?: number }) => ({
       id: chat.id,
-      title: chat.title || 'New Chat',
-      summary: chat.summary || 'No summary',
-      lastMessage: chat.summary || 'No messages',
-      timestamp: new Date(chat.updated_at || chat.created_at).getTime(),
-      aiModel: chat.ai_model || 'myai',
-      messageCount: chat.message_count || 0,
+      title: chat.title ?? 'New Chat',
+      summary: chat.summary ?? 'No summary',
+      lastMessage: chat.summary ?? 'No messages',
+      timestamp: new Date(chat.updated_at || chat.created_at || 0).getTime(),
+      aiModel: chat.ai_model ?? 'myai',
+      messageCount: chat.message_count ?? 0,
     }));
   } catch (error) {
     console.error('Error in getChatsFromDB:', error);
