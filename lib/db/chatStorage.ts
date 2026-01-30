@@ -188,13 +188,14 @@ export async function saveChatToDB(
     };
 
     if (existingChat) {
-      // Update existing chat
+      // Update existing chat - do NOT overwrite is_incognito (it was set when the chat was created)
+      const { is_incognito: _omit, ...updateData } = chatData;
       await adminClient
         .from('chats')
-        .update(chatData)
+        .update(updateData)
         .eq('id', chatId);
     } else {
-      // Create new chat
+      // Create new chat - set is_incognito from this request (chat created in incognito or not)
       await adminClient
         .from('chats')
         .insert({
