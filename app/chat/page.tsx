@@ -898,7 +898,15 @@ export default function ChatPage() {
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
         incognitoMode={incognitoMode}
-        onIncognitoChange={setIncognitoMode}
+        onIncognitoChange={(value) => {
+          setIncognitoMode(value);
+          if (value) {
+            const newId = `chat-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+            setChatId(newId);
+            setMessages([]);
+            window.history.replaceState({}, "", `/chat?chatId=${newId}`);
+          }
+        }}
         user={user}
         temperature={temperature}
         onTemperatureChange={setTemperature}

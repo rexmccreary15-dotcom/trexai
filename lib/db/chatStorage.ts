@@ -204,7 +204,7 @@ export async function saveChatToDB(
           message_count: messages.length,
           updated_at: now,
           created_at: now,
-          is_incognito: incognito,
+          is_incognito: incognito === true,
         });
     }
 
