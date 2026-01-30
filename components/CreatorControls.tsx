@@ -701,7 +701,9 @@ export default function CreatorControls({
                             </div>
                             {selectedUser.chats && selectedUser.chats.length > 0 && (
                               <div className="mt-4">
-                                <h5 className="font-semibold mb-2">Chat History</h5>
+                                <h5 className="font-semibold mb-2">
+                                  Chat History ({selectedUser.chats.length} chat{selectedUser.chats.length !== 1 ? "s" : ""})
+                                </h5>
                                 <div className="flex items-center gap-2 mb-2">
                                   <Search size={16} className={theme === "dark" ? "text-gray-400" : "text-gray-600"} />
                                   <input
@@ -729,20 +731,25 @@ export default function CreatorControls({
                                     return tA - tB;
                                   });
                                   return (
-                                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                                    <div className="space-y-2 max-h-[50vh] min-h-[200px] overflow-y-auto pr-1">
                                       {byTime.length === 0 ? (
                                         <p className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
                                           {q ? "No messages match your search." : "No user messages in chats."}
                                         </p>
                                       ) : (
-                                        byTime.map(({ chat, msg }, i) => (
-                                          <div key={i} className={`p-2 rounded ${themeClasses.bg} border ${themeClasses.border}`}>
-                                            <p className={`text-xs ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
-                                              {msg.created_at ? new Date(msg.created_at).toLocaleString() : "—"} • {chat.title || "Untitled Chat"}
-                                            </p>
-                                            <p className="text-sm mt-0.5 break-words">{msg.content || ""}</p>
-                                          </div>
-                                        ))
+                                        <>
+                                          <p className={`text-xs ${theme === "dark" ? "text-gray-500" : "text-gray-400"}`}>
+                                            Scroll to see all {byTime.length} message{byTime.length !== 1 ? "s" : ""} across all chats.
+                                          </p>
+                                          {byTime.map(({ chat, msg }, i) => (
+                                            <div key={i} className={`p-2 rounded ${themeClasses.bg} border ${themeClasses.border}`}>
+                                              <p className={`text-xs ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
+                                                {msg.created_at ? new Date(msg.created_at).toLocaleString() : "—"} • {chat.title || "Untitled Chat"}
+                                              </p>
+                                              <p className="text-sm mt-0.5 break-words">{msg.content || ""}</p>
+                                            </div>
+                                          ))}
+                                        </>
                                       )}
                                     </div>
                                   );
