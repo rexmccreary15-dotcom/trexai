@@ -14,7 +14,7 @@ import FeedbackPanel from "@/components/FeedbackPanel";
 import AccountSettings from "@/components/AccountSettings";
 import CreatorControls from "@/components/CreatorControls";
 import { saveChat, getChatMessages } from "@/lib/chatStorage";
-import { getSessionId, getChatsFromDB, getChatMessagesFromDB } from "@/lib/db/chatStorage";
+import { getSessionId, getChatsFromDB } from "@/lib/db/chatStorage";
 import { useAuth } from "@/components/AuthProvider";
 import { getSupabaseClient } from "@/lib/supabase";
 
@@ -39,6 +39,7 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [selectedAI, setSelectedAI] = useState("myai");
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingChat, setLoadingChat] = useState(true); // true until initial chat load finishes
   const [incognitoMode, setIncognitoMode] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showCommands, setShowCommands] = useState(false);
@@ -97,16 +98,66 @@ export default function ChatPage() {
     return () => { cancelled = true; };
   }, [user, supabase]);
 
-  // Load commands from localStorage
+  // Load commands: from API when logged in (per account), from sessionStorage when not (per tab only – no sharing between users)
+  const commandsLoadedRef = useRef(false);
   useEffect(() => {
-    const savedCommands = localStorage.getItem("ai-chat-commands");
-    if (savedCommands) {
-      setCommands(JSON.parse(savedCommands));
-    }
-    
-    // Creator controls unlock status is now loaded from database in the auth effect above
+    if (!supabase) return;
+    let cancelled = false;
 
-    // Load API keys
+    const load = async () => {
+      if (user) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (cancelled || !session?.access_token) return;
+          const res = await fetch("/api/user/commands", {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+          if (cancelled) return;
+          if (res.ok) {
+            const data = await res.json();
+            setCommands(Array.isArray(data.commands) ? data.commands : []);
+          }
+        } catch (e) {
+          if (!cancelled) console.error("Failed to load commands:", e);
+        }
+      } else {
+        const raw = typeof sessionStorage !== "undefined" ? sessionStorage.getItem("ai-chat-commands") : null;
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) setCommands(parsed);
+          } catch (_) { /* ignore */ }
+        } else {
+          setCommands([]);
+        }
+      }
+      if (!cancelled) commandsLoadedRef.current = true;
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [user, supabase]);
+
+  // Save commands: to API when logged in, to sessionStorage when not (so other people/tabs don't see them)
+  useEffect(() => {
+    if (!commandsLoadedRef.current) return;
+    if (user && supabase) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.access_token) {
+          fetch("/api/user/commands", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+            body: JSON.stringify({ commands }),
+          }).catch((e) => console.error("Failed to save commands:", e));
+        }
+      });
+    } else {
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.setItem("ai-chat-commands", JSON.stringify(commands));
+      }
+    }
+  }, [commands, user, supabase]);
+
+  // Load API keys
     const savedKeys = localStorage.getItem("ai-chat-api-keys");
     if (savedKeys) {
       try {
@@ -172,6 +223,7 @@ export default function ChatPage() {
 
       if (isNewChat || (!urlChatId || !urlChatId.startsWith("chat-"))) {
         // "Start New Chat" was clicked OR no valid chatId - ALWAYS create a completely new chat
+        setLoadingChat(false);
         const newChatId = `chat-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
         setChatId(newChatId);
         setMessages([]); // Clear ALL messages
@@ -181,52 +233,51 @@ export default function ChatPage() {
         return;
       }
 
-      // URL has a chatId - load that existing chat
-      if (urlChatId && urlChatId.startsWith("chat-")) {
-        setChatId(urlChatId);
-        
-        // Try to load from database first
-        try {
-          const dbMessages = await getChatMessagesFromDB(urlChatId);
-          if (dbMessages && dbMessages.length > 0) {
-            setMessages(dbMessages);
-            // Try to get AI model from database
-            const dbChats = await getChatsFromDB();
-            const chat = dbChats.find((c: any) => c.id === urlChatId);
-            if (chat?.aiModel) {
-              setSelectedAI(chat.aiModel);
-            }
+      // URL has a chatId - load that existing chat (via API on server, then localStorage fallback)
+      setChatId(urlChatId);
+      setLoadingChat(true);
+
+      try {
+        // If user is logged in, try to load from server (API uses service role key safely)
+        let token: string | null = null;
+        if (supabase) {
+          const { data: { session } } = await supabase.auth.getSession();
+          token = session?.access_token ?? null;
+        }
+        if (token) {
+          const res = await fetch(`/api/chats/${encodeURIComponent(urlChatId)}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setMessages(data.messages || []);
+            if (data.aiModel) setSelectedAI(data.aiModel);
+            setLoadingChat(false);
             return;
           }
-        } catch (error) {
-          console.error('Error loading from database, falling back to localStorage:', error);
         }
-        
-        // Fallback to localStorage
+
+        // Fallback to localStorage (anonymous or API returned 404)
         const savedMessages = getChatMessages(urlChatId);
         if (savedMessages && savedMessages.length > 0) {
           setMessages(savedMessages);
           const chats = JSON.parse(localStorage.getItem("ai-chat-history") || "[]");
           const chat = chats.find((c: any) => c.id === urlChatId);
-          if (chat?.aiModel) {
-            setSelectedAI(chat.aiModel);
-          }
+          if (chat?.aiModel) setSelectedAI(chat.aiModel);
         } else {
-          // If chatId provided but no messages found, start fresh
           setMessages([]);
         }
+      } catch (error) {
+        console.error("Error loading chat:", error);
+        const savedMessages = getChatMessages(urlChatId);
+        setMessages(savedMessages && savedMessages.length > 0 ? savedMessages : []);
+      } finally {
+        setLoadingChat(false);
       }
     };
-    
-    loadChat();
-  }, [searchParams]);
 
-  // Save commands to localStorage
-  useEffect(() => {
-    if (commands.length > 0) {
-      localStorage.setItem("ai-chat-commands", JSON.stringify(commands));
-    }
-  }, [commands]);
+    loadChat();
+  }, [searchParams, supabase]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -618,7 +669,19 @@ export default function ChatPage() {
 
       {/* Messages */}
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.length === 0 && (
+        {loadingChat && (
+          <div className={`flex justify-center items-center min-h-[200px] ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex gap-2">
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }} />
+              </div>
+              <p className="text-sm">Loading conversation...</p>
+            </div>
+          </div>
+        )}
+        {!loadingChat && messages.length === 0 && (
           <div className={`text-center mt-20 ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
             <p className="text-xl mb-2">Start a conversation</p>
             <p className="text-sm">Ask me anything!</p>
@@ -641,7 +704,7 @@ export default function ChatPage() {
             )}
           </div>
         )}
-        {messages.map((msg, idx) => (
+        {!loadingChat && messages.map((msg, idx) => (
           <div
             key={idx}
             ref={(el) => {
