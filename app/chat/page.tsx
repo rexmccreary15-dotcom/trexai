@@ -40,7 +40,14 @@ export default function ChatPage() {
   const [selectedAI, setSelectedAI] = useState("myai");
   const [isLoading, setIsLoading] = useState(false);
   const [loadingChat, setLoadingChat] = useState(true); // true until initial chat load finishes
-  const [incognitoMode, setIncognitoMode] = useState(false);
+  const [incognitoMode, setIncognitoMode] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return localStorage.getItem("trexai_incognito") === "true";
+    } catch {
+      return false;
+    }
+  });
   const [showSettings, setShowSettings] = useState(false);
   const [showCommands, setShowCommands] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -68,6 +75,17 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+
+  // Persist incognito toggle so it survives reload (only chats created in incognito stay marked incognito in DB)
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("trexai_incognito", incognitoMode ? "true" : "false");
+      }
+    } catch {
+      // ignore
+    }
+  }, [incognitoMode]);
 
   // Creator controls + incognito: when user logs out, reset. When logged in, fetch unlock status.
   useEffect(() => {

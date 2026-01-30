@@ -176,31 +176,35 @@ export async function saveChatToDB(
       .eq('id', chatId)
       .single();
 
-    const chatData = {
-      id: chatId,
-      user_id: userId,
-      title,
-      summary,
-      ai_model: aiModel,
-      message_count: messages.length,
-      updated_at: new Date().toISOString(),
-      is_incognito: incognito,
-    };
+    const now = new Date().toISOString();
 
     if (existingChat) {
-      // Update existing chat - do NOT overwrite is_incognito (it was set when the chat was created)
-      const { is_incognito: _omit, ...updateData } = chatData;
+      // Update existing chat only - NEVER touch is_incognito (set once when chat was created)
       await adminClient
         .from('chats')
-        .update(updateData)
+        .update({
+          user_id: userId,
+          title,
+          summary,
+          ai_model: aiModel,
+          message_count: messages.length,
+          updated_at: now,
+        })
         .eq('id', chatId);
     } else {
-      // Create new chat - set is_incognito from this request (chat created in incognito or not)
+      // Create new chat - set is_incognito from this request only (chat created in incognito or not)
       await adminClient
         .from('chats')
         .insert({
-          ...chatData,
-          created_at: new Date().toISOString(),
+          id: chatId,
+          user_id: userId,
+          title,
+          summary,
+          ai_model: aiModel,
+          message_count: messages.length,
+          updated_at: now,
+          created_at: now,
+          is_incognito: incognito,
         });
     }
 
