@@ -899,15 +899,17 @@ export default function ChatPage() {
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
         incognitoMode={incognitoMode}
-        onIncognitoChange={(value) => {
+        onIncognitoChange={async (value) => {
           setIncognitoMode(value);
           if (value) {
             const current = chatId;
-            previousChatIdBeforeIncognitoRef.current = current;
-            try {
-              sessionStorage.setItem("trexai_previous_chat_before_incognito", current);
-            } catch {
-              // ignore
+            if (current && current.startsWith("chat-")) {
+              previousChatIdBeforeIncognitoRef.current = current;
+              try {
+                sessionStorage.setItem("trexai_previous_chat_before_incognito", current);
+              } catch {
+                // ignore
+              }
             }
             const newId = `chat-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
             setChatId(newId);
@@ -915,16 +917,49 @@ export default function ChatPage() {
             window.history.replaceState({}, "", `/chat?chatId=${newId}`);
           } else {
             const previous =
-              previousChatIdBeforeIncognitoRef.current ??
-              (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("trexai_previous_chat_before_incognito") : null);
+              (previousChatIdBeforeIncognitoRef.current ||
+                (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("trexai_previous_chat_before_incognito") : null))?.trim?.() || null;
             previousChatIdBeforeIncognitoRef.current = null;
             try {
               sessionStorage.removeItem("trexai_previous_chat_before_incognito");
             } catch {
               // ignore
             }
-            if (previous) {
-              window.location.href = `/chat?chatId=${previous}`;
+            if (previous && previous.startsWith("chat-")) {
+              setShowSettings(false);
+              setChatId(previous);
+              setMessages([]);
+              setLoadingChat(true);
+              window.history.replaceState({}, "", `/chat?chatId=${previous}`);
+              try {
+                let token: string | null = null;
+                if (supabase) {
+                  const { data: { session } } = await supabase.auth.getSession();
+                  token = session?.access_token ?? null;
+                }
+                if (token) {
+                  const res = await fetch(`/api/chats/${encodeURIComponent(previous)}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                  });
+                  if (res.ok) {
+                    const data = await res.json();
+                    setMessages(data.messages || []);
+                    if (data.aiModel) setSelectedAI(data.aiModel);
+                  } else {
+                    const saved = getChatMessages(previous);
+                    setMessages(saved && saved.length > 0 ? saved : []);
+                  }
+                } else {
+                  const saved = getChatMessages(previous);
+                  setMessages(saved && saved.length > 0 ? saved : []);
+                }
+              } catch (err) {
+                console.error("Error loading previous chat:", err);
+                const saved = getChatMessages(previous);
+                setMessages(saved && saved.length > 0 ? saved : []);
+              } finally {
+                setLoadingChat(false);
+              }
             } else {
               const newId = `chat-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
               setChatId(newId);
