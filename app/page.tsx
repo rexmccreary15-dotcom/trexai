@@ -76,34 +76,41 @@ export default function Home() {
     setChats(getChats());
   };
 
-  const handleStartNewChat = async () => {
-    // Always ask for name when starting a new chat (required). Pre-fill if we have it.
-    const savedName = localStorage.getItem("trexai_display_name");
-    setFirstTimeName(savedName || "");
-    setPendingNewChat(true);
-    setShowFirstTimeModal(true);
-    if (user && supabase) {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) {
-          const res = await fetch("/api/user/profile", { headers: { Authorization: `Bearer ${session.access_token}` } });
-          if (res.ok) {
-            const data = await res.json();
-            if (data.display_name) setFirstTimeName(data.display_name);
+  const handleStartNewChat = () => {
+    // Only ask for name the first time they use the site; after that just go to new chat
+    const hasAskedName = localStorage.getItem("trexai-has-asked-name");
+    const hasName = localStorage.getItem("trexai_display_name");
+    if (!hasAskedName || !hasName) {
+      const savedName = localStorage.getItem("trexai_display_name");
+      setFirstTimeName(savedName || "");
+      setPendingNewChat(true);
+      setShowFirstTimeModal(true);
+      if (user && supabase) {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session?.access_token) {
+            fetch("/api/user/profile", { headers: { Authorization: `Bearer ${session.access_token}` } })
+              .then((res) => res.ok ? res.json() : null)
+              .then((data) => data?.display_name && setFirstTimeName(data.display_name))
+              .catch(() => {});
           }
-        }
-      } catch (_) {}
+        });
+      }
+      return;
     }
+    router.push(`/chat?new=${Date.now()}`);
   };
 
   const handleSkipLogin = () => {
     if (firstTimeName.trim()) {
       localStorage.setItem("trexai_display_name", firstTimeName.trim());
     }
+    localStorage.setItem("trexai-has-asked-name", "true");
     localStorage.setItem("has-visited-before", "true");
     setShowFirstTimeModal(false);
-    setPendingNewChat(false);
-    // If they skipped from "Start new chat" flow, don't go to new chat (name required)
+    if (pendingNewChat) {
+      setPendingNewChat(false);
+      router.push(`/chat?new=${Date.now()}`);
+    }
   };
 
   const handleFirstTimeContinue = async () => {
@@ -125,6 +132,7 @@ export default function Home() {
     if (name) {
       localStorage.setItem("trexai_display_name", name);
     }
+    localStorage.setItem("trexai-has-asked-name", "true");
     localStorage.setItem("has-visited-before", "true");
     setShowFirstTimeModal(false);
     if (pendingNewChat) {
@@ -134,9 +142,13 @@ export default function Home() {
   };
 
   const handleAuthSuccess = () => {
+    localStorage.setItem("trexai-has-asked-name", "true");
     localStorage.setItem("has-visited-before", "true");
     setShowFirstTimeModal(false);
-    setPendingNewChat(false);
+    if (pendingNewChat) {
+      setPendingNewChat(false);
+      router.push(`/chat?new=${Date.now()}`);
+    }
   };
 
   const handleSignOut = async () => {
