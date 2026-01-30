@@ -4,7 +4,7 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useRef, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Send, Image as ImageIcon, Settings, EyeOff, Command, ThumbsUp, Home, User, Copy, Check, Sparkles } from "lucide-react";
@@ -32,8 +32,10 @@ interface Message {
 
 export default function ChatPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const urlChatId = searchParams.get("chatId");
   const [chatId, setChatId] = useState<string>(() => urlChatId || `chat-${Date.now()}`);
+  const previousChatIdBeforeIncognitoRef = useRef<string | null>(null);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -900,10 +902,24 @@ export default function ChatPage() {
         incognitoMode={incognitoMode}
         onIncognitoChange={(value) => {
           setIncognitoMode(value);
-          const newId = `chat-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-          setChatId(newId);
-          setMessages([]);
-          window.history.replaceState({}, "", `/chat?chatId=${newId}`);
+          if (value) {
+            previousChatIdBeforeIncognitoRef.current = chatId;
+            const newId = `chat-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+            setChatId(newId);
+            setMessages([]);
+            window.history.replaceState({}, "", `/chat?chatId=${newId}`);
+          } else {
+            const previous = previousChatIdBeforeIncognitoRef.current;
+            previousChatIdBeforeIncognitoRef.current = null;
+            if (previous) {
+              router.push(`/chat?chatId=${previous}`);
+            } else {
+              const newId = `chat-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+              setChatId(newId);
+              setMessages([]);
+              window.history.replaceState({}, "", `/chat?chatId=${newId}`);
+            }
+          }
         }}
         user={user}
         temperature={temperature}
