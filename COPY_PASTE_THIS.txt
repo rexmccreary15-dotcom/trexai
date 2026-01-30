@@ -1,0 +1,26 @@
+========================================
+COPY-PASTE THIS INTO WINDOWS POWERSHELL
+(Use after every update)
+========================================
+
+cd "c:\Users\Rexan\.cursor\cursor app"; npm run build; if ($LASTEXITCODE -ne 0) { Write-Host "`nBuild failed - fix the error above.`n" -ForegroundColor Red; exit 1 }; git add .; git status; git commit -m "Updates" 2>$null; git push; Write-Host "`nDone. Wait 1-2 min then refresh your site.`n" -ForegroundColor Green
+
+========================================
+IF YOUR PROJECT IS IN A DIFFERENT FOLDER
+========================================
+Replace the path in the command above. Example:
+cd "D:\MyProjects\cursor app"; npm run build; ...
+
+========================================
+ONE-TIME: RUN SQL IN SUPABASE (for commands per account)
+========================================
+Only if you haven't done this before:
+
+1. Open https://supabase.com/dashboard
+2. Click your project
+3. Left sidebar: SQL Editor
+4. Click "New query"
+5. Paste this exactly:
+   ALTER TABLE users ADD COLUMN IF NOT EXISTS commands JSONB DEFAULT '[]';
+6. Click Run (or press Ctrl+Enter)
+7. Done. You only do this once.

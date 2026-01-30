@@ -157,7 +157,8 @@ export default function ChatPage() {
     }
   }, [commands, user, supabase]);
 
-  // Load API keys
+  // Load API keys, theme, background, and other preferences from localStorage
+  useEffect(() => {
     const savedKeys = localStorage.getItem("ai-chat-api-keys");
     if (savedKeys) {
       try {
