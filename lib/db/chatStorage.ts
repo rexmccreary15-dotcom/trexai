@@ -179,7 +179,7 @@ export async function saveChatToDB(
     const now = new Date().toISOString();
 
     if (existingChat) {
-      // Update existing chat - set is_incognito from this request so Creator Controls shows Incognito/normal per latest message
+      // Update existing chat - do NOT change is_incognito (set once when chat was created; toggling incognito starts a new chat)
       await adminClient
         .from('chats')
         .update({
@@ -189,7 +189,6 @@ export async function saveChatToDB(
           ai_model: aiModel,
           message_count: messages.length,
           updated_at: now,
-          is_incognito: incognito === true,
         })
         .eq('id', chatId);
     } else {
