@@ -612,7 +612,7 @@ export default function CreatorControls({
                       <table className="w-full text-sm">
                         <thead>
                           <tr className={`border-b ${themeClasses.border}`}>
-                            <th className="text-left p-2">Session ID</th>
+                            <th className="text-left p-2">Name</th>
                             <th className="text-left p-2">Email</th>
                             <th className="text-left p-2">Messages</th>
                             <th className="text-left p-2">Last Active</th>
@@ -623,7 +623,7 @@ export default function CreatorControls({
                         <tbody>
                           {users.map((user) => (
                             <tr key={user.id} className={`border-b ${themeClasses.border} hover:${themeClasses.hover}`}>
-                              <td className="p-2 font-mono text-xs">{user.session_id?.substring(0, 20)}...</td>
+                              <td className="p-2">{user.display_name || "—"}</td>
                               <td className="p-2">{user.email || "—"}</td>
                               <td className="p-2">{user.message_count || 0}</td>
                               <td className="p-2">
@@ -718,6 +718,7 @@ export default function CreatorControls({
                         ) : (
                           <>
                             <div className="space-y-2 text-sm">
+                              <p><strong>Name:</strong> {selectedUser.display_name || "—"}</p>
                               <p><strong>ID:</strong> <span className="font-mono text-xs">{selectedUser.id}</span></p>
                               <p><strong>Session ID:</strong> <span className="font-mono text-xs">{selectedUser.session_id || "—"}</span></p>
                               <p><strong>Email:</strong> {selectedUser.email || "—"}</p>

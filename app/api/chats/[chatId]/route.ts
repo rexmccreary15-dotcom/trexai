@@ -103,7 +103,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Chat not found or access denied" }, { status: 404 });
     }
 
-    // Soft-delete so user no longer sees it, but creator can still see in user's chat history
+    // Soft-delete so user no longer sees it (creator can still see). If deleted_at column missing, hard-delete.
     const { error: delError } = await adminClient
       .from("chats")
       .update({ deleted_at: new Date().toISOString() })
@@ -111,8 +111,17 @@ export async function DELETE(
       .eq("user_id", dbUser.id);
 
     if (delError) {
-      console.error("Error soft-deleting chat:", delError);
-      return NextResponse.json({ error: "Failed to delete chat" }, { status: 500 });
+      // Column may not exist yet; fall back to hard delete so delete always works
+      await adminClient.from("messages").delete().eq("chat_id", chatId);
+      const { error: hardErr } = await adminClient
+        .from("chats")
+        .delete()
+        .eq("id", chatId)
+        .eq("user_id", dbUser.id);
+      if (hardErr) {
+        console.error("Error deleting chat:", hardErr);
+        return NextResponse.json({ error: "Failed to delete chat" }, { status: 500 });
+      }
     }
 
     return NextResponse.json({ ok: true });

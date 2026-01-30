@@ -11,9 +11,11 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = (page - 1) * limit;
 
+    // Only list users who have signed in (auth_user_id set); anonymous sessions not shown so count is accurate
     const { data: users, error, count } = await adminClient
       .from('users')
       .select('*', { count: 'exact' })
+      .not('auth_user_id', 'is', null)
       .order('last_active', { ascending: false })
       .range(offset, offset + limit - 1);
 

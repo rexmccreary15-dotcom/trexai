@@ -247,7 +247,7 @@ export default function Home() {
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <p className="text-gray-300">What should we call you?</p>
+              <p className="text-gray-300">Name (required)</p>
               <input
                 type="text"
                 placeholder="Your name"
@@ -256,12 +256,13 @@ export default function Home() {
                 className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
               />
               <p className="text-sm text-gray-400">
-                Create an account to save your chat history and access it from any device.
+                Create an account to save your chat history and access it from any device. Email is optional when you sign up.
               </p>
               <div className="flex flex-col gap-2">
                 <button
                   onClick={handleFirstTimeContinue}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg"
+                  disabled={!firstTimeName.trim()}
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded-lg"
                 >
                   Continue
                 </button>

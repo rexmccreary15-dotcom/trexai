@@ -295,7 +295,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, theme }: AuthMod
                 <div>
                   <label className="block text-sm font-medium mb-2 flex items-center gap-2">
                     <Mail size={16} />
-                    Email
+                    Email (optional)
                   </label>
                   <input
                     type="email"

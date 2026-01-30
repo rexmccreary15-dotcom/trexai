@@ -7,10 +7,10 @@ const adminClient = createSupabaseAdmin();
 // GET - Get specific user details including chats with messages
 export async function GET(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
-    const { userId } = params;
+    const { userId } = await params;
 
     const { data: user, error } = await adminClient
       .from('users')
@@ -79,6 +79,7 @@ export async function GET(
 
     return NextResponse.json({
       ...user,
+      display_name: user.display_name ?? null,
       email: userEmail || user.email || null,
       message_count: realCount,
       chats: chatsWithMessages,
@@ -95,10 +96,10 @@ export async function GET(
 // PATCH - Update user (ban, set limits, etc.)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
-    const { userId } = params;
+    const { userId } = await params;
     const body = await request.json();
 
     const updateData: any = {};
@@ -140,10 +141,10 @@ export async function PATCH(
 // DELETE - Delete user and their data
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
-    const { userId } = params;
+    const { userId } = await params;
 
     // Delete user (cascade will delete chats and messages)
     const { error } = await adminClient
