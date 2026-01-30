@@ -11,10 +11,11 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = (page - 1) * limit;
 
-    // List everyone who uses the site (signed-in and anonymous)
+    // Only show real people: signed-in OR entered their name (hide anonymous sessions with no name)
     const { data: users, error, count } = await adminClient
       .from('users')
       .select('*', { count: 'exact' })
+      .or('auth_user_id.not.is.null,display_name.not.is.null')
       .order('last_active', { ascending: false })
       .range(offset, offset + limit - 1);
 

@@ -35,14 +35,14 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString()
     });
 
-    // Get active users (users active in last 24 hours)
-    const twentyFourHoursAgo = new Date();
-    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+    // Active users = actually using right now (last 15 minutes), not "visited in last 24h"
+    const fifteenMinutesAgo = new Date();
+    fifteenMinutesAgo.setMinutes(fifteenMinutesAgo.getMinutes() - 15);
     
-    // First, get all users to see what we have
     const { data: allUsersSample, count: totalUsersCount, error: allUsersError } = await adminClient
       .from('users')
       .select('id, last_active, is_banned', { count: 'exact' })
+      .or('auth_user_id.not.is.null,display_name.not.is.null')
       .limit(10);
     
     console.log('All users sample:', { 
@@ -58,13 +58,14 @@ export async function GET(request: NextRequest) {
     const { count: activeUsers, error: activeUsersError } = await adminClient
       .from('users')
       .select('*', { count: 'exact', head: true })
-      .gte('last_active', twentyFourHoursAgo.toISOString())
-      .eq('is_banned', false);
+      .gte('last_active', fifteenMinutesAgo.toISOString())
+      .eq('is_banned', false)
+      .or('auth_user_id.not.is.null,display_name.not.is.null');
     
-    console.log('Active users query:', { 
+    console.log('Active users query (last 15 min):', { 
       count: activeUsers, 
       error: activeUsersError?.message,
-      twentyFourHoursAgo: twentyFourHoursAgo.toISOString()
+      fifteenMinutesAgo: fifteenMinutesAgo.toISOString()
     });
 
     // Get peak usage time (hour with most messages)
@@ -150,11 +151,12 @@ export async function GET(request: NextRequest) {
 
     console.log('Popular models:', popularModels);
 
-    // Get total users
+    // Total users (signed-in or have a name; exclude anonymous no-name sessions)
     const { count: totalUsers, error: totalUsersError } = await adminClient
       .from('users')
       .select('*', { count: 'exact', head: true })
-      .eq('is_banned', false);
+      .eq('is_banned', false)
+      .or('auth_user_id.not.is.null,display_name.not.is.null');
     
     console.log('Total users query:', { count: totalUsers, error: totalUsersError?.message });
 

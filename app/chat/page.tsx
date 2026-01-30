@@ -534,12 +534,13 @@ export default function ChatPage() {
           incognito: incognitoMode,
           apiKeys: apiKeys,
           codingMode: codingMode,
-          imageData: imageData, // Send image data separately for MyAI
-          imageMimeType: imageMimeType, // Send mime type for proper format handling
-          chatId: chatId, // Include chatId for saving chats
-          sessionId: sessionId, // Include sessionId for analytics tracking
-          authUserId: authUserId, // Include authenticated user ID if logged in
-          authUserEmail: authUserEmail, // Include authenticated user email if logged in
+          imageData: imageData,
+          imageMimeType: imageMimeType,
+          chatId: chatId,
+          sessionId: sessionId,
+          authUserId: authUserId,
+          authUserEmail: authUserEmail,
+          displayName: typeof localStorage !== "undefined" ? localStorage.getItem("trexai_display_name") : null,
         }),
       });
 

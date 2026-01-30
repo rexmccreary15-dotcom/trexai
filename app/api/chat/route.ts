@@ -60,7 +60,8 @@ export async function POST(request: NextRequest) {
       chatId,
       sessionId,
       authUserId,
-      authUserEmail
+      authUserEmail,
+      displayName
     } = await request.json();
 
     // Prefer verified user from Bearer token (server-side) over body (client can be wrong)
@@ -99,6 +100,14 @@ export async function POST(request: NextRequest) {
         if (!userId) {
           console.error("CRITICAL: Failed to get/create user. Analytics will not work!");
         } else {
+          // Save display name for anonymous users (so it shows in User management)
+          const nameToSave = typeof displayName === 'string' ? displayName.trim() : null;
+          if (nameToSave) {
+            try {
+              const adminClient = createSupabaseAdmin();
+              await adminClient.from('users').update({ display_name: nameToSave }).eq('id', userId);
+            } catch (_) {}
+          }
           // Track message sent event IMMEDIATELY - before any other processing
           console.log("Tracking analytics event - userId:", userId, "model:", model);
           try {
