@@ -576,7 +576,7 @@ export default function ChatPage() {
             // Logged in: API already saved to DB; optionally keep localStorage in sync for same-tab UX
             saveChat(chatId, updatedMessages, selectedAI, incognitoMode);
           } else {
-            // Logged out: save to localStorage only (temporary, cleared on reload)
+            // Logged out: save to localStorage on this device (persists until cleared or sign out)
             saveChat(chatId, updatedMessages, selectedAI, incognitoMode);
           }
         }
@@ -591,7 +591,7 @@ export default function ChatPage() {
             // Logged in: API already saved to DB; optionally keep localStorage in sync for same-tab UX
             saveChat(chatId, updatedMessages, selectedAI, incognitoMode);
           } else {
-            // Logged out: save to localStorage only (temporary, cleared on reload)
+            // Logged out: save to localStorage on this device (persists until cleared or sign out)
             saveChat(chatId, updatedMessages, selectedAI, incognitoMode);
           }
         }

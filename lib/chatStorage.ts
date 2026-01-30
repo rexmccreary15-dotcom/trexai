@@ -89,8 +89,8 @@ export function saveChat(chatId: string, messages: any[], aiModel: string, incog
     } else {
       // Add new chat
       chats.unshift(chat);
-      // Keep only last 50 chats
-      const limited = chats.slice(0, 50);
+      // Keep last 500 chats on device (effectively "infinite" for one device)
+      const limited = chats.slice(0, 500);
       localStorage.setItem("ai-chat-history", JSON.stringify(limited));
     }
     

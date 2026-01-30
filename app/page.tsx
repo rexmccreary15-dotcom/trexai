@@ -24,7 +24,7 @@ export default function Home() {
 
   const loadChats = useCallback(async () => {
     if (!user) {
-      setChats([]);
+      setChats(getChats());
       return;
     }
     if (!supabase) return;
