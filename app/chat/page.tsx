@@ -4,7 +4,7 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useRef, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Send, Image as ImageIcon, Settings, EyeOff, Command, ThumbsUp, Home, User, Copy, Check, Sparkles } from "lucide-react";
@@ -32,7 +32,6 @@ interface Message {
 
 export default function ChatPage() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const urlChatId = searchParams.get("chatId");
   const [chatId, setChatId] = useState<string>(() => urlChatId || `chat-${Date.now()}`);
   const previousChatIdBeforeIncognitoRef = useRef<string | null>(null);
@@ -903,16 +902,29 @@ export default function ChatPage() {
         onIncognitoChange={(value) => {
           setIncognitoMode(value);
           if (value) {
-            previousChatIdBeforeIncognitoRef.current = chatId;
+            const current = chatId;
+            previousChatIdBeforeIncognitoRef.current = current;
+            try {
+              sessionStorage.setItem("trexai_previous_chat_before_incognito", current);
+            } catch {
+              // ignore
+            }
             const newId = `chat-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
             setChatId(newId);
             setMessages([]);
             window.history.replaceState({}, "", `/chat?chatId=${newId}`);
           } else {
-            const previous = previousChatIdBeforeIncognitoRef.current;
+            const previous =
+              previousChatIdBeforeIncognitoRef.current ??
+              (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("trexai_previous_chat_before_incognito") : null);
             previousChatIdBeforeIncognitoRef.current = null;
+            try {
+              sessionStorage.removeItem("trexai_previous_chat_before_incognito");
+            } catch {
+              // ignore
+            }
             if (previous) {
-              router.push(`/chat?chatId=${previous}`);
+              window.location.href = `/chat?chatId=${previous}`;
             } else {
               const newId = `chat-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
               setChatId(newId);
