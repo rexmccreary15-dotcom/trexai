@@ -87,12 +87,12 @@ export default function ChatPage() {
     }
   }, [incognitoMode]);
 
-  // Creator controls + incognito: when user logs out, reset. When logged in, fetch unlock status.
+  // Creator controls: when user logs out, hide. When logged in, fetch unlock status.
+  // Do NOT reset incognito when !user – that was overwriting the toggle for anonymous users and making new chats save as normal.
   useEffect(() => {
     if (!user) {
       setCreatorUnlocked(false);
       setShowCreatorControls(false);
-      setIncognitoMode(false);
       return;
     }
     if (!supabase) return;

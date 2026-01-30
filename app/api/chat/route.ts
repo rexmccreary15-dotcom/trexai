@@ -64,6 +64,8 @@ export async function POST(request: NextRequest) {
       displayName
     } = await request.json();
 
+    const incognitoFlag = incognito === true;
+
     // Prefer verified user from Bearer token (server-side) over body (client can be wrong)
     let verifiedAuthUserId: string | null = (authUserId && typeof authUserId === 'string') ? authUserId : null;
     let verifiedAuthUserEmail: string | null = (authUserEmail && typeof authUserEmail === 'string') ? authUserEmail : null;
@@ -83,16 +85,16 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("=== API REQUEST START ===");
-    console.log("API received - sessionId:", sessionId || "MISSING!", "chatId:", chatId || "MISSING!", "incognito:", incognito, "authUserId:", verifiedAuthUserId || "MISSING");
+    console.log("API received - sessionId:", sessionId || "MISSING!", "chatId:", chatId || "MISSING!", "incognito:", incognitoFlag, "authUserId:", verifiedAuthUserId || "MISSING");
     console.log("=== API REQUEST START ===");
 
     // Track analytics and get user ID - MUST happen BEFORE processing the message
     let userId: string | null = null;
-    if (!incognito && sessionId) {
+    if (!incognitoFlag && sessionId) {
       try {
         console.log("=== ANALYTICS TRACKING START ===");
         console.log("Session ID:", sessionId);
-        console.log("Incognito mode:", incognito);
+        console.log("Incognito mode:", incognitoFlag);
         
         userId = await getOrCreateUser(sessionId, verifiedAuthUserId ?? undefined, verifiedAuthUserEmail ?? undefined);
         console.log("User ID:", userId || "NULL - User creation failed!");
@@ -215,7 +217,7 @@ export async function POST(request: NextRequest) {
         // Continue even if analytics fails - don't break the chat
       }
     } else {
-      console.log("Analytics skipped - incognito:", incognito, "sessionId:", sessionId);
+      console.log("Analytics skipped - incognito:", incognitoFlag, "sessionId:", sessionId);
     }
     
     // Check content moderation
@@ -288,7 +290,7 @@ export async function POST(request: NextRequest) {
         codingMode
       );
       
-      await saveChatAfterResponse(chatId, messages, model, incognito, sessionId, verifiedAuthUserId, verifiedAuthUserEmail, response);
+      await saveChatAfterResponse(chatId, messages, model, incognitoFlag, sessionId, verifiedAuthUserId, verifiedAuthUserEmail, response);
       
       return NextResponse.json({
         message: response,
@@ -314,7 +316,7 @@ export async function POST(request: NextRequest) {
       const openai = new OpenAI({ apiKey });
 
       // Filter out system messages if incognito mode (for privacy)
-      const filteredMessages = incognito
+      const filteredMessages = incognitoFlag
         ? messages.filter((msg: any) => msg.role !== "system")
         : messages;
 
@@ -374,7 +376,7 @@ export async function POST(request: NextRequest) {
 
         const responseText = completion.choices[0]?.message?.content || "No response";
         
-        await saveChatAfterResponse(chatId, messages, model, incognito, sessionId, verifiedAuthUserId, verifiedAuthUserEmail, responseText);
+        await saveChatAfterResponse(chatId, messages, model, incognitoFlag, sessionId, verifiedAuthUserId, verifiedAuthUserEmail, responseText);
         
         return NextResponse.json({
           message: responseText,
@@ -413,7 +415,7 @@ export async function POST(request: NextRequest) {
       try {
         // Use REST API directly for better control and model availability
         // Filter and clean messages
-        const filteredMessages = (incognito
+        const filteredMessages = (incognitoFlag
           ? messages.filter((msg: any) => msg.role !== "system")
           : messages
         ).map((msg: any) => {
@@ -428,7 +430,7 @@ export async function POST(request: NextRequest) {
         const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
         
         // Add system instruction if coding mode
-        if (codingMode && !incognito) {
+        if (codingMode && !incognitoFlag) {
           contents.push({
             role: "user",
             parts: [{ text: "You are an expert software developer. Focus on code solutions." }],
@@ -569,7 +571,7 @@ export async function POST(request: NextRequest) {
 
         const responseText = text || "No response";
         
-        await saveChatAfterResponse(chatId, messages, model, incognito, sessionId, verifiedAuthUserId, verifiedAuthUserEmail, responseText);
+        await saveChatAfterResponse(chatId, messages, model, incognitoFlag, sessionId, verifiedAuthUserId, verifiedAuthUserEmail, responseText);
         
         return NextResponse.json({
           message: responseText,
@@ -616,7 +618,7 @@ export async function POST(request: NextRequest) {
       const anthropic = new Anthropic({ apiKey });
 
       // Filter out system messages if incognito
-      const filteredMessages = incognito
+      const filteredMessages = incognitoFlag
         ? messages.filter((msg: any) => msg.role !== "system")
         : messages;
 
@@ -676,7 +678,7 @@ export async function POST(request: NextRequest) {
 
         const responseText = text;
         
-        await saveChatAfterResponse(chatId, messages, model, incognito, sessionId, verifiedAuthUserId, verifiedAuthUserEmail, responseText);
+        await saveChatAfterResponse(chatId, messages, model, incognitoFlag, sessionId, verifiedAuthUserId, verifiedAuthUserEmail, responseText);
         
         return NextResponse.json({
           message: responseText,
