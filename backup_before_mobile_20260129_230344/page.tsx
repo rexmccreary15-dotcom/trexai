@@ -642,28 +642,28 @@ export default function ChatPage() {
     : { backgroundColor: "#0f172a" }; // Default dark navy
 
   return (
-    <div className={`flex flex-col min-h-screen h-screen max-w-[100vw] overflow-x-hidden ${themeClasses.text}`} style={backgroundStyle}>
-      {/* Header - responsive: wraps on small screens, smaller padding on mobile */}
-      <header className={`border-b p-2 sm:p-4 flex flex-wrap items-center justify-between gap-2 ${themeClasses.border}`} style={{ backgroundColor: "transparent" }}>
-        <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-shrink-0">
-          <Link href="/" className={`p-1.5 sm:p-1 rounded min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center ${themeClasses.hover}`} aria-label="Home">
-            <Home size={20} className="shrink-0" />
+    <div className={`flex flex-col h-screen ${themeClasses.text}`} style={backgroundStyle}>
+      {/* Header */}
+      <header className={`border-b p-4 flex items-center justify-between ${themeClasses.border}`} style={{ backgroundColor: 'transparent' }}>
+        <div className="flex items-center gap-4">
+          <Link href="/" className={`p-1 rounded ${themeClasses.hover}`}>
+            <Home size={20} />
           </Link>
-          <h1 className="text-base sm:text-xl font-semibold truncate">TREXAI</h1>
+          <h1 className="text-xl font-semibold">TREXAI</h1>
           {incognitoMode && (
-            <div className="flex items-center gap-1.5 sm:gap-2 text-purple-400 text-xs sm:text-sm shrink-0">
-              <EyeOff size={14} className="sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Incognito</span>
+            <div className="flex items-center gap-2 text-purple-400 text-sm">
+              <EyeOff size={16} />
+              <span>Incognito</span>
             </div>
           )}
           {incog26Mode && (
-            <div className="flex items-center gap-1.5 sm:gap-2 text-amber-400 text-xs sm:text-sm shrink-0">
-              <Lock size={14} className="sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Incog26</span>
+            <div className="flex items-center gap-2 text-amber-400 text-sm">
+              <Lock size={16} />
+              <span>Incog26</span>
             </div>
           )}
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 min-w-0">
+        <div className="flex items-center gap-2">
           {/* Only show Creator Controls button if user is logged in AND unlocked */}
           {user !== null && user !== undefined && creatorUnlocked === true && (
             <button
@@ -734,8 +734,8 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* Messages - responsive padding */}
-      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4 space-y-4">
+      {/* Messages */}
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
         {loadingChat && (
           <div className={`flex justify-center items-center min-h-[200px] ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
             <div className="flex flex-col items-center gap-3">
@@ -841,8 +841,8 @@ export default function ChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-        {/* Input Area - responsive padding and touch targets */}
-        <div className={`border-t p-2 sm:p-4 ${themeClasses.border}`} style={{ backgroundColor: "transparent" }}>
+        {/* Input Area */}
+        <div className={`border-t p-4 ${themeClasses.border}`} style={{ backgroundColor: 'transparent' }}>
         {/* Command Preview */}
         {commandPreview && (
           <div className="max-w-4xl mx-auto mb-2 px-2">
@@ -877,7 +877,7 @@ export default function ChatPage() {
           </div>
         )}
 
-        <div className="flex items-end gap-1.5 sm:gap-2 max-w-4xl mx-auto w-full min-w-0">
+        <div className="flex items-end gap-2 max-w-4xl mx-auto">
           <input
             type="file"
             ref={fileInputRef}
@@ -888,9 +888,8 @@ export default function ChatPage() {
           />
           <button
             onClick={() => fileInputRef.current?.click()}
-            className={`p-2.5 sm:p-2 rounded shrink-0 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center ${themeClasses.hover}`}
+            className={`p-2 rounded ${themeClasses.hover}`}
             title="Upload images"
-            type="button"
           >
             <ImageIcon size={20} />
           </button>
@@ -903,15 +902,14 @@ export default function ChatPage() {
                 handleSend();
               }
             }}
-            placeholder="Type your message..."
-            className={`flex-1 min-w-0 ${themeClasses.input} rounded-lg p-2.5 sm:p-3 resize-none focus:outline-none focus:border-blue-500 ${themeClasses.text} text-base`}
+            placeholder="Type your message... (Use /commands to set up shortcuts)"
+            className={`flex-1 ${themeClasses.input} rounded-lg p-3 resize-none focus:outline-none focus:border-blue-500 ${themeClasses.text}`}
             rows={1}
           />
           <button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
-            className="p-2.5 sm:p-2 bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed text-white shrink-0 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center"
-            type="button"
+            className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed text-white"
           >
             <Send size={20} />
           </button>
