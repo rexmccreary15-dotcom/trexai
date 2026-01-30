@@ -1,4 +1,3 @@
-// revert-mobile
 import { BannedGuard } from "@/components/BannedGuard";
 
 import type { Metadata } from "next";
